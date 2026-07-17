@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package rov.telemetry;
+
+// A standard 3-axis representation for IMU data
+message Vector3D {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+// Telemetry from the ROV sensors to the topside
+message SensorData {
+  uint64 timestamp_us = 1;
+  Vector3D acceleration = 2;      // m/s^2
+  Vector3D angular_velocity = 3;   // rad/s
+  float depth = 4;                 // meters (calculated from pressure)
+  float temperature = 5;           // Celsius
+}
+
+// Control commands from topside (joystick) to the ROV
+message JoystickCommand {
+  uint64 timestamp_us = 1;
+  float forward = 2;   // -1.0 to 1.0 (surge)
+  float strafe = 3;    // -1.0 to 1.0 (sway)
+  float vertical = 4;  // -1.0 to 1.0 (heave)
+  float pitch = 5;     // -1.0 to 1.0
+  float roll = 6;      // -1.0 to 1.0
+  float yaw = 7;       // -1.0 to 1.0 (heading)
+}
+
+// testing message
+message test {
+  string msg = 1;
+}
