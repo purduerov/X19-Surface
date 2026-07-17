@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Camera View{% endblock %}
+
+{% block styles %}
+<style>
+  body {
+    background-color: #212529;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  /* Ensure navbar stays on top */
+  .navbar {
+    position: relative;
+    z-index: 1000; /* Higher z-index to stay above camera container */
+  }
+  
+  .camera-container {
+    position: absolute;
+    top: 56px; /* Height of navbar */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    z-index: 10; /* Lower z-index than navbar */
+  }
+  
+  iframe {
+    border: none;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .camera-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    background-color: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 8px;
+  }
+  
+  .btn-camera {
+    width: 50px;
+    height: 50px;
+    font-weight: bold;
+  }
+  
+  .btn-camera.active {
+    border: 3px solid #fff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+  }
+  
+  .record-icon {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    background-color: white;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .btn-record.recording {
+    animation: pulse 1.5s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+</style>
+{% endblock %}
+
+{% block body_attributes %}class="bg-dark"{% endblock %}
+
+{% block content %}
+<div class="camera-container">
+  <iframe id="camera-stream" src="" scrolling="no"></iframe>
+  
+  <div class="camera-controls d-flex justify-content-center">
+    <div class="btn-group me-3">
+      <button class="btn btn-dark btn-camera fs-5" data-camera="1">1</button>
+      <button class="btn btn-dark btn-camera fs-5" data-camera="2">2</button>
+      <button class="btn btn-dark btn-camera fs-5" data-camera="3">3</button>
+      <button class="btn btn-dark btn-camera fs-5" data-camera="4">4</button>
+    </div>
+    <button id="record-button" class="btn btn-danger d-flex align-items-center">
+      <span class="record-icon"></span> Record
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  // Store camera URLs passed from the server
+  const cameraUrls = {
+    camera1: "{{ camera_urls.camera1|safe }}",
+    camera2: "{{ camera_urls.camera2|safe }}",
+    camera3: "{{ camera_urls.camera3|safe }}",
+    camera4: "{{ camera_urls.camera4|safe }}"
+  };
+  
+  // Pass camera URLs to the global scope for use in cameras.js
+  window.cameraUrls = cameraUrls;
+</script>
+<script src="static/cameras.js"></script>
+<script src="static/recording.js"></script>
+{% endblock %}

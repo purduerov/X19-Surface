@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}All Cameras{% endblock %}
+
+{% block styles %}
+<style>
+  body {
+    background-color: #212529;
+    height: 100vh;
+    overflow: auto;
+  }
+  
+  .camera-container {
+    padding: 10px;
+    margin-top: 56px; /* Height of navbar */
+  }
+  
+  .camera-cell {
+    background-color: #000;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+    aspect-ratio: 16/9;
+    margin-bottom: 10px;
+  }
+  
+  .camera-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    z-index: 10;
+  }
+  
+  iframe {
+    border: none;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .fullscreen-button {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    z-index: 10;
+  }
+  
+  .fullscreen-button:hover {
+    background-color: rgba(0,0,0,0.8);
+  }
+
+  .photo-button {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  .photo-button:hover {
+    background-color: rgba(0,0,0,0.8);
+  }
+</style>
+{% endblock %}
+
+{% block body_attributes %}class="bg-dark"{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row g-4">
+    
+    <!-- Camera 1 -->
+    <div class="col-12 col-md-6">
+      <div class="camera-cell">
+        <div class="camera-label">Camera 1</div>
+        <iframe src="{{ camera_urls.camera1|safe }}" scrolling="no"></iframe>
+        
+        <button class="photo-button" data-camera="camera1">
+          📸
+        </button>
+
+        <button class="fullscreen-button" data-camera="1">
+          <i class="bi bi-fullscreen"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Camera 2 -->
+    <div class="col-12 col-md-6">
+      <div class="camera-cell">
+        <div class="camera-label">Camera 2</div>
+        <iframe src="{{ camera_urls.camera2|safe }}" scrolling="no"></iframe>
+
+        <button class="photo-button" data-camera="camera2">
+          📸
+        </button>
+
+        <button class="fullscreen-button" data-camera="2">
+          <i class="bi bi-fullscreen"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Camera 3 -->
+    <div class="col-12 col-md-6">
+      <div class="camera-cell">
+        <div class="camera-label">Camera 3</div>
+        <iframe src="{{ camera_urls.camera3|safe }}" scrolling="no"></iframe>
+
+        <button class="photo-button" data-camera="camera3">
+          📸
+        </button>
+
+        <button class="fullscreen-button" data-camera="3">
+          <i class="bi bi-fullscreen"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Camera 4 -->
+    <div class="col-12 col-md-6">
+      <div class="camera-cell">
+        <div class="camera-label">Camera 4</div>
+        <iframe src="{{ camera_urls.camera4|safe }}" scrolling="no"></iframe>
+
+        <button class="photo-button" data-camera="camera4">
+          📸
+        </button>
+
+        <button class="fullscreen-button" data-camera="4">
+          <i class="bi bi-fullscreen"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- CV Camera
+    <div class="col-12 col-md-6">
+      <div class="camera-cell">
+        <div class="camera-label">CV Camera</div>
+        <iframe src="{{ camera_urls.cv_camera|safe }}" scrolling="no"></iframe>
+
+        <button class="photo-button" data-camera="cv_camera">
+          📸
+        </button>
+
+        <button class="fullscreen-button" data-camera="cv">
+          <i class="bi bi-fullscreen"></i>
+        </button>
+      </div>
+    </div>
+    -->
+ 
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Setup fullscreen button actions
+  const fullscreenButtons = document.querySelectorAll('.fullscreen-button');
+  
+  fullscreenButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const cameraNumber = this.getAttribute('data-camera');
+      // Redirect to single camera view with the selected camera
+      window.location.href = `/fullscreen-camera?camera=${cameraNumber}`;
+    });
+  });
+
+  // photo button
+  document.querySelectorAll('.photo-button').forEach(button => {
+    button.addEventListener('click', async function (e) {
+      e.stopPropagation(); // Prevent accidental fullscreen click
+
+      const camera = this.getAttribute('data-camera');
+      this.disabled = true;
+      this.textContent = "⏳";
+
+      try {
+        const res = await fetch(`/api/photo/${camera}`, {
+          method: "POST"
+        });
+
+        const data = await res.json();
+
+        if (data.status === "ok") {
+          this.textContent = "✅";
+          setTimeout(() => this.textContent = "📸", 1000);
+        } else {
+          throw new Error("Photo failed");
+        }
+      } catch (err) {
+        console.error(err);
+        this.textContent = "❌";
+        setTimeout(() => this.textContent = "📸", 1500);
+      } finally {
+        this.disabled = false;
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

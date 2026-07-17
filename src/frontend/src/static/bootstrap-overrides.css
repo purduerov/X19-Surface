@@ -1,0 +1,56 @@
+/* Bootstrap primary color override to #d4a517 */
+:root {
+    --bs-primary: #d4a517;
+    --bs-primary-rgb: 212, 165, 23;
+    --bs-link-color: #d4a517;
+    --bs-link-hover-color: #b88e14;
+}
+
+.btn-primary {
+    background-color: #d4a517;
+    border-color: #d4a517;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: #b88e14;
+    border-color: #b88e14;
+}
+
+.bg-primary {
+    background-color: #d4a517 !important;
+}
+
+.text-primary {
+    color: #d4a517 !important;
+}
+
+.btn-outline-primary {
+    color: #d4a517;
+    border-color: #d4a517;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active {
+    background-color: #d4a517;
+    border-color: #d4a517;
+}
+
+.border-primary {
+    border-color: #d4a517 !important;
+}
+
+/* Active navigation styles */
+.navbar-dark .navbar-nav .nav-link.active {
+    color: white;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+/* Dropdown active item */
+.dropdown-item.active, 
+.dropdown-item:active {
+    background-color: #d4a517;
+}

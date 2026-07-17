@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}Console Logs{% endblock %}
+
+{% block styles %}
+<style>
+  #log-container {
+    background-color: #212529;
+    color: #f8f9fa;
+    font-family: 'Courier New', monospace;
+    padding: 1rem;
+    height: 75vh;
+    overflow-y: auto;
+    border-radius: 5px;
+    margin-bottom: 1rem;
+    border: 1px solid #495057;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  
+  .log-entry {
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+  }
+  
+  .log-info {
+    color: #20c997;
+  }
+  
+  .log-warn {
+    color: #ffc107;
+  }
+  
+  .log-error {
+    color: #dc3545;
+  }
+  
+  .log-debug {
+    color: #6c757d;
+  }
+  
+  .log-time {
+    color: #0dcaf0;
+    margin-right: 0.5rem;
+  }
+
+  .log-node {
+    color: #9370db;
+    margin-right: 0.5rem;
+  }
+  
+  .controls-container {
+    margin-bottom: 1rem;
+  }
+  
+  .filter-container {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .node-filter-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 10px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h1 class="mb-3">Console Logs</h1>
+  
+  <div class="controls-container">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-3">
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <span>Log Level Filters</span>
+              <button class="btn btn-sm btn-outline-primary" id="toggle-all-levels">Toggle All</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="filter-container">
+              <div class="form-check form-switch">
+                <input class="form-check-input level-toggle" type="checkbox" id="info-toggle" checked>
+                <label class="form-check-label" for="info-toggle">INFO</label>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input level-toggle" type="checkbox" id="warn-toggle" checked>
+                <label class="form-check-label" for="warn-toggle">WARN</label>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input level-toggle" type="checkbox" id="error-toggle" checked>
+                <label class="form-check-label" for="error-toggle">ERROR</label>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input level-toggle" type="checkbox" id="debug-toggle" checked>
+                <label class="form-check-label" for="debug-toggle">DEBUG</label>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="autoscroll-toggle" checked>
+                <label class="form-check-label" for="autoscroll-toggle">Auto-scroll</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <span>Node Filters</span>
+              <button class="btn btn-sm btn-outline-primary" id="toggle-all-nodes">Toggle All</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="node-filter-container" id="node-filters">
+              <!-- Node filters will be dynamically added here -->
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header">Search and Actions</div>
+          <div class="card-body">
+            <div class="input-group mb-3">
+              <input type="text" id="search-input" class="form-control" placeholder="Search logs...">
+              <button class="btn btn-outline-secondary" type="button" id="clear-search">Clear</button>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-outline-danger" type="button" id="clear-logs">Clear Logs</button>
+              <button id="download-logs" class="btn btn-primary">Download Logs</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="log-container"></div>
+  
+  <div class="d-flex justify-content-between align-items-center mt-2">
+    <span>Connection status: <span id="connection-status" class="badge bg-secondary">Disconnected</span></span>
+    <span>Total logs: <span id="log-count">0</span></span>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const logContainer = document.getElementById('log-container');
+    const autoscrollToggle = document.getElementById('autoscroll-toggle');
+    const infoToggle = document.getElementById('info-toggle');
+    const warnToggle = document.getElementById('warn-toggle');
+    const errorToggle = document.getElementById('error-toggle');
+    const debugToggle = document.getElementById('debug-toggle');
+    const searchInput = document.getElementById('search-input');
+    const clearSearchBtn = document.getElementById('clear-search');
+    const clearLogsBtn = document.getElementById('clear-logs');
+    const downloadLogsBtn = document.getElementById('download-logs');
+    const connectionStatus = document.getElementById('connection-status');
+    const nodeFiltersContainer = document.getElementById('node-filters');
+    const toggleAllLevelsBtn = document.getElementById('toggle-all-levels');
+    const toggleAllNodesBtn = document.getElementById('toggle-all-nodes');
+    const logCountElem = document.getElementById('log-count');
+    
+    let socket = io();
+    let logEntries = [];
+    let nodeFilters = {};  // To store node filters
+    let allNodesChecked = true; // Track state of node filters
+    let allLevelsChecked = true; // Track state of level filters
+    
+    // Connect to the server
+    socket.on('connect', function() {
+      connectionStatus.textContent = 'Connected';
+      connectionStatus.className = 'badge bg-success';
+    });
+    
+    socket.on('disconnect', function() {
+      connectionStatus.textContent = 'Disconnected';
+      connectionStatus.className = 'badge bg-danger';
+    });
+    
+    // Listen for log messages
+    socket.on('log_message', function(data) {
+      // Store log entries for filtering
+      logEntries.push(data);
+      logCountElem.textContent = logEntries.length;
+      
+      // Update node filters if this is a new node
+      updateNodeFiltersList(data.node);
+      
+      // Add to display if it passes filters
+      if (shouldDisplayLog(data)) {
+        appendLogEntry(data);
+      }
+      
+      // Auto-scroll if enabled
+      if (autoscrollToggle.checked) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+    });
+    
+    // Helper function to determine log level class
+    function getLogLevelClass(level) {
+      switch(level.toLowerCase()) {
+        case 'info': return 'log-info';
+        case 'warn': case 'warning': return 'log-warn';
+        case 'error': return 'log-error';
+        case 'debug': return 'log-debug';
+        default: return '';
+      }
+    }
+    
+    // Helper function to format timestamp
+    function formatTime(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('en-US', { hour12: false });
+    }
+    
+    // Helper function to determine if log should be displayed based on filters
+    function shouldDisplayLog(log) {
+      const level = log.level.toLowerCase();
+      const nodeName = log.node || 'unknown';
+      
+      // Check level filters
+      if (level === 'info' && !infoToggle.checked) return false;
+      if ((level === 'warn' || level === 'warning') && !warnToggle.checked) return false;
+      if (level === 'error' && !errorToggle.checked) return false;
+      if (level === 'debug' && !debugToggle.checked) return false;
+      
+      // Check node filter
+      if (nodeFilters[nodeName] !== undefined && !nodeFilters[nodeName]) {
+        return false;
+      }
+      
+      // Check search filter
+      const searchTerm = searchInput.value.toLowerCase();
+      if (searchTerm && !log.message.toLowerCase().includes(searchTerm)) {
+        return false;
+      }
+      
+      return true;
+    }
+    
+    // Function to append a log entry to the container
+    function appendLogEntry(log) {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${getLogLevelClass(log.level)}`;
+      
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'log-time';
+      timeSpan.textContent = formatTime(log.timestamp);
+      
+      const nodeSpan = document.createElement('span');
+      nodeSpan.className = 'log-node';
+      nodeSpan.textContent = `[${log.node || 'unknown'}]`;
+      
+      entry.appendChild(timeSpan);
+      entry.appendChild(nodeSpan);
+      entry.appendChild(document.createTextNode(`[${log.level}] ${log.message}`));
+      
+      logContainer.appendChild(entry);
+    }
+    
+    // Update node filters list
+    function updateNodeFiltersList(nodeName) {
+      if (!nodeName || nodeName === 'unknown') return;
+      
+      // If this node isn't in our filters yet, add it
+      if (nodeFilters[nodeName] === undefined) {
+        // Default to checked
+        nodeFilters[nodeName] = true;
+        
+        // Create checkbox for this node
+        const nodeDiv = document.createElement('div');
+        nodeDiv.className = 'form-check';
+        
+        const nodeCheckbox = document.createElement('input');
+        nodeCheckbox.type = 'checkbox';
+        nodeCheckbox.className = 'form-check-input node-filter';
+        nodeCheckbox.id = `node-${nodeName}`;
+        nodeCheckbox.checked = true;
+        nodeCheckbox.addEventListener('change', function() {
+          nodeFilters[nodeName] = this.checked;
+          refreshLogs();
+        });
+        
+        const nodeLabel = document.createElement('label');
+        nodeLabel.className = 'form-check-label';
+        nodeLabel.htmlFor = `node-${nodeName}`;
+        nodeLabel.textContent = nodeName;
+        
+        nodeDiv.appendChild(nodeCheckbox);
+        nodeDiv.appendChild(nodeLabel);
+        nodeFiltersContainer.appendChild(nodeDiv);
+      }
+    }
+    
+    // Function to refresh all logs with current filters
+    function refreshLogs() {
+      // Clear current display
+      logContainer.innerHTML = '';
+      
+      // Re-apply entries that match current filters
+      logEntries.forEach(entry => {
+        if (shouldDisplayLog(entry)) {
+          appendLogEntry(entry);
+        }
+      });
+      
+      // Auto-scroll if enabled
+      if (autoscrollToggle.checked) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+    }
+    
+    // Event listeners for level filters
+    [infoToggle, warnToggle, errorToggle, debugToggle].forEach(toggle => {
+      toggle.addEventListener('change', refreshLogs);
+    });
+    
+    // Toggle all level filters
+    toggleAllLevelsBtn.addEventListener('click', function() {
+      const allToggles = document.querySelectorAll('.level-toggle');
+      allLevelsChecked = !allLevelsChecked;
+      allToggles.forEach(toggle => {
+        toggle.checked = allLevelsChecked;
+      });
+      refreshLogs();
+    });
+    
+    // Toggle all node filters
+    toggleAllNodesBtn.addEventListener('click', function() {
+      const allNodeToggles = document.querySelectorAll('.node-filter');
+      allNodesChecked = !allNodesChecked;
+      
+      allNodeToggles.forEach(toggle => {
+        toggle.checked = allNodesChecked;
+        nodeFilters[toggle.id.replace('node-', '')] = allNodesChecked;
+      });
+      
+      refreshLogs();
+    });
+    
+    // Search implementation
+    searchInput.addEventListener('input', refreshLogs);
+    
+    // Clear search button
+    clearSearchBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      refreshLogs();
+    });
+    
+    // Clear logs button
+    clearLogsBtn.addEventListener('click', function() {
+      logEntries = [];
+      logContainer.innerHTML = '';
+      logCountElem.textContent = '0';
+    });
+    
+    // Download logs
+    downloadLogsBtn.addEventListener('click', function() {
+      const logText = logEntries.map(log => 
+        `${formatTime(log.timestamp)} [${log.node || 'unknown'}] [${log.level}] ${log.message}`
+      ).join('\n');
+      
+      const blob = new Blob([logText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `x17-logs-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+    
+    // Request initial logs when page loads
+    socket.emit('request_logs');
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Thruster Testing{% endblock %}
+
+{% block styles %}
+<style>
+  .status-indicator {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+  }
+  .status-connected {
+    background-color: #198754;  /* Bootstrap success green */
+  }
+  .status-stale {
+    background-color: #fd7e14;  /* Bootstrap warning orange */
+  }
+  .status-disconnected {
+    background-color: #dc3545;  /* Bootstrap danger red */
+  }
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="container mt-5 p-4 bg-white rounded shadow-sm" style="max-width: 600px;">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0 text-primary">Thruster Testing</h1>
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" id="display-mode-switch" onchange="toggleDisplayMode()">
+      <label class="form-check-label" for="display-mode-switch">
+        <span id="display-mode-label">Absolute (0-255)</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Connection Status -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          Frontend Connection
+        </div>
+        <div class="card-body d-flex align-items-center">
+          <span class="status-indicator status-disconnected" id="frontend-status-indicator"></span>
+          <span id="frontend-status-text">Disconnected</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-danger text-white">
+          Core Connection
+        </div>
+        <div class="card-body d-flex align-items-center">
+          <span class="status-indicator status-disconnected" id="core-status-indicator"></span>
+          <span id="core-status-text">Disconnected</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form id="thruster-form">
+    <div class="row mb-3">
+      <div class="col-3 d-flex align-items-center">
+        <div class="form-check me-2">
+          <input class="form-check-input" type="checkbox" id="select-all" onchange="toggleAllCheckboxes()">
+          <label class="form-check-label" for="select-all">Select All</label>
+        </div>
+      </div>
+      <div class="col-9">
+        <div class="d-flex align-items-center">
+          <input type="number" class="form-control fw-bold text-center me-2" id="master-slider-value" value="127"
+            oninput="updateSliderFromTextbox()" style="width: 80px;">
+          <input type="range" class="form-range" id="master-slider" min="0" max="255" value="127"
+            oninput="updateAllValues()">
+        </div>
+      </div>
+    </div>
+    <!-- Thruster inputs -->
+    <div class="row mb-3">
+      <div class="col">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="thruster1-check"
+            onchange="toggleThrusterInput('thruster1')">
+          <label class="form-check-label" for="thruster1-check">Thruster 1</label>
+        </div>
+        <input type="number" class="form-control mb-2" id="thruster1" min="0" max="255" value="127">
+      </div>
+      <div class="col">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="thruster2-check"
+            onchange="toggleThrusterInput('thruster2')">
+          <label class="form-check-label" for="thruster2-check">Thruster 2</label>
+        </div>
+        <input type="number" class="form-control mb-2" id="thruster2" min="0" max="255" value="127">
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="thruster3-check"
+            onchange="toggleThrusterInput('thruster3')">
+          <label class="form-check-label" for="thruster3-check">Thruster 3</label>
+        </div>
+        <input type="number" class="form-control mb-2" id="thruster3" min="0" max="255" value="127">
+      </div>
+      <div class="col">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="thruster4-check"
+            onchange="toggleThrusterInput('thruster4')">
+          <label class="form-check-label" for="thruster4-check">Thruster 4</label>
+        </div>
+        <input type="number" class="form-control mb-2" id="thruster4" min="0" max="255" value="127">
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="thruster5-check"
+            onchange="toggleThrusterInput('thruster5')">
+          <label class="form-check-label" for="thruster5-check">Thruster 5</label>
+        </div>
+        <input type="number" class="form-control mb-2" id="thruster5" min="0" max="255" value="127">
+      </div>
+      <div class="col">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="thruster6-check"
+            onchange="toggleThrusterInput('thruster6')">
+          <label class="form-check-label" for="thruster6-check">Thruster 6</label>
+        </div>
+        <input type="number" class="form-control mb-2" id="thruster6" min="0" max="255" value="127">
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="thruster7-check"
+            onchange="toggleThrusterInput('thruster7')">
+          <label class="form-check-label" for="thruster7-check">Thruster 7</label>
+        </div>
+        <input type="number" class="form-control mb-2" id="thruster7" min="0" max="255" value="127">
+      </div>
+      <div class="col">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="thruster8-check"
+            onchange="toggleThrusterInput('thruster8')">
+          <label class="form-check-label" for="thruster8-check">Thruster 8</label>
+        </div>
+        <input type="number" class="form-control mb-2" id="thruster8" min="0" max="255" value="127">
+      </div>
+    </div>
+    <div class="d-flex justify-content-between">
+      <button type="button" id="toggle-send" class="btn btn-primary" onclick="toggleSendValues()">Send Values</button>
+      <button type="button" id="send-once" class="btn btn-secondary ms-2" onclick="sendThrusterValues()">Send Values
+        Once</button>
+      <button type="button" class="btn btn-danger ms-auto" onclick="resetValues()">Reset</button>
+    </div>
+  </form>
+</div>
+<div class="container mt-4 p-4 bg-white rounded shadow-sm" style="max-width: 600px;">
+  <h3 class="mb-3">Final Thrust message:</h3>
+  <!-- Final Thrust table -->
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>1</th>
+        <th>2</th>
+        <th>3</th>
+        <th>4</th>
+        <th>5</th>
+        <th>6</th>
+        <th>7</th>
+        <th>8</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td id="final-thrust1">127</td>
+        <td id="final-thrust2">127</td>
+        <td id="final-thrust3">127</td>
+        <td id="final-thrust4">127</td>
+        <td id="final-thrust5">127</td>
+        <td id="final-thrust6">127</td>
+        <td id="final-thrust7">127</td>
+        <td id="final-thrust8">127</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="static/socketio/thruster_testing.js"></script>
+{% endblock %}

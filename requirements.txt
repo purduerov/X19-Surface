@@ -1,3 +1,16 @@
 pyzmq>=24.0.0
 protobuf>=4.21.0
 pyyaml>=6.0.0
+command==0.1.0
+netifaces==0.11.0
+numpy>=1.26.0
+opencv_python==4.11.0.86
+paramiko==3.4.0
+pygame==2.5.2
+python-dotenv==1.0.1
+flask==3.0.3
+flask-socketio==5.4.1
+requests==2.32.3
+websocket-client==1.8.0
+flask-cors==5.0.0
+jsonschema==4.23.0

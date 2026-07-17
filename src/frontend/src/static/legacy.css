@@ -1,0 +1,299 @@
+:root {
+    --top-base: 11.11%;
+    --middle-base: 33.33%;
+    --bottom-base: 55.33%;
+    --left-base: 12%;
+    --right-base: 35%;
+}
+
+
+body {
+    background-color: rgb(219, 226, 233);
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.speedometer-base {
+    transform: translate(-50%, -50%);
+    height: 7.5vw;
+    width: 15vw;
+    background-color: rgb(60, 127, 172);
+    border-radius: 7.5vw 7.5vw 0 0;
+}
+
+
+#speedometer-base1 {
+    position: absolute;
+    top: var(--top-base);
+    left: var(--left-base);
+}
+
+#colored-part {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 100%; /* Full width of the base */
+    height: 100%; /* Full height of the base */
+    background-color: green; /* Initial color */
+    transform-origin: bottom center; /* Rotate around the bottom center */
+    clip-path: polygon(50% 100%, 100% 0%, 0% 0%); /* Wedge shape */
+    transform: rotate(0deg);
+    transition: transform 0.3s ease; /* Smooth transition */
+}
+
+#speedometer-base2 {
+    position: absolute;
+    top: var(--middle-base);
+    left: var(--left-base);
+}
+
+#speedometer-base3 {
+    position: absolute;
+    top: var(--bottom-base);
+    left: var(--left-base);
+}
+
+#speedometer-base4 {
+    position: absolute;
+    top: var(--top-base);
+    left: var(--right-base);
+}
+
+#speedometer-base5 {
+    position: absolute;
+    top: var(--middle-base);
+    left: var(--right-base);
+}
+
+#speedometer-base6 {
+    position: absolute;
+    top: var(--bottom-base);
+    left: var(--right-base);
+}
+.slider {
+    width: 15vw;
+    transform: translate(-50%, -50%);
+    position: absolute;
+}
+
+#slider1 {
+    top: calc(var(--top-base) + 10%);
+    left: var(--left-base);
+}
+
+#slider2 {
+    top: calc(var(--middle-base) + 10%);
+    left: var(--left-base);
+}
+
+#slider3 {
+    top: calc(var(--bottom-base) + 10%);
+    left: var(--left-base);
+}
+
+#slider4 {
+    top: calc(var(--top-base) + 10%);
+    left: var(--right-base);
+}
+
+#slider5 {
+    top: calc(var(--middle-base) + 10%);
+    left: var(--right-base);
+}
+
+#slider6 {
+    top: calc(var(--bottom-base) + 10%);
+    left: var(--right-base);
+}
+
+.speedometer-tip{
+    width: .26vw;
+    height: 6.75vw;
+    background-color: red;
+    clip-path: polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%);
+    border-bottom-left-radius: .35vw;
+    border-bottom-right-radius: .35vw;
+    margin-left: calc(.26vw) /2;
+    margin-top: calc(-3.38vw);
+    transform-origin: bottom center;
+    transition: transform 0.1s;
+}
+
+#speedometer-tip1{
+    position: absolute;
+    top: var(--top-base);
+    left: var(--left-base);
+}
+
+#speedometer-tip2{
+    position: absolute;
+    top: var(--middle-base);
+    left: var(--left-base);
+}
+
+#speedometer-tip3{
+    position: absolute;
+    top: var(--bottom-base);
+    left: var(--left-base);
+}
+
+#speedometer-tip4{
+    position: absolute;
+    top: var(--top-base);
+    left: var(--right-base);
+}
+
+#speedometer-tip5{
+    position: absolute;
+    top: var(--middle-base);
+    left: var(--right-base);
+}
+
+#speedometer-tip6{
+    position: absolute;
+    top: var(--bottom-base);
+    left: var(--right-base);
+}
+
+.thruster-display{
+    position: absolute;
+    font-size: 18px;
+    transform: translate(-50%, 0%);
+}
+
+#thrust-value1 {
+    top: calc(var(--top-base) + 5%);
+    left: var(--left-base);
+}
+
+#thrust-value2 {
+    top: calc(var(--middle-base) + 5%);
+    left: var(--left-base);
+}
+
+#thrust-value3 {
+    top: calc(var(--bottom-base) + 5%);
+    left: var(--left-base);
+}
+
+#thrust-value4 {
+    top: calc(var(--top-base) + 5%);
+    left: var(--right-base);
+}
+
+#thrust-value5 {
+    top: calc(var(--middle-base) + 5%);
+    left: var(--right-base);
+}
+
+#thrust-value6 {
+    top: calc(var(--bottom-base) + 5%);
+    left: var(--right-base);
+}
+
+.internal-temp-display{
+    position: absolute;
+    font-size: 4vh;
+    top: 9%;
+    left: 52%;
+}
+
+.depth-display{
+    position: absolute;
+    font-size: 8vh;
+    top: 83%;
+    left: 52%;
+}
+
+.humidity-display{
+    position: absolute;
+    font-size: 4vh;
+    top: 15%;
+    left: 52%;
+}
+
+.pressure-display {
+    position: absolute;
+    font-size: 4vh;
+    top: 3%;
+    left: 52%;
+}
+
+.current-display {
+    position: absolute;
+    font-size: 6vh;
+    top: 27%;
+    left: 52%;
+}
+
+.voltage-display {
+    position: absolute;
+    font-size: 6vh;
+    top: 38%;
+    left: 52%;
+}
+
+.acceleration-display {
+    position: absolute;
+    font-size: 6vh;
+    top: 52%;
+    left: 52%;
+}
+
+.ang-velocity-display {
+    position: absolute;
+    font-size: 6vh;
+    top: 63%;
+    left: 52%;
+}
+
+.xyz-display {
+    position: absolute;
+    font-size: 6vh;
+    top: 72%;
+    left: 25%;
+}
+
+.pry-display {
+    position: absolute;
+    font-size: 6vh;
+    top: 72%;
+    left: 2%;
+}
+
+#vert-separator {
+    position: absolute;
+    top: 0%;
+    left: 50%;
+    width: 0.5vw;
+    height: 100vh;
+    background-color: black;
+}
+
+.horiz-separator {
+    position: absolute;
+    width: 50vw;
+    height: 0.5vh;
+    background-color: black;
+
+}
+
+#horiz-separator1 {
+    top: 70%;
+    left: 0%;
+}
+
+#horiz-separator2 {
+    top: 25%;
+    left: 50%;
+}
+
+#horiz-separator3 {
+    top: 50%;
+    left: 50%;
+}
+
+#horiz-separator4 {
+    top: 75%;
+    left: 50%;
+}
+

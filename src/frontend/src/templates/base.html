@@ -1,0 +1,103 @@
+<!-- frontend/src/templates/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}X17-Surface{% endblock %}</title>
+    <link rel="stylesheet" href="/static/bootstrap-v5.3.3.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/bootstrap-overrides.css">
+    {% block styles %}{% endblock %}
+</head>
+<body {% block body_attributes %}{% endblock %}>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">X17-Surface</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'home' %}active{% endif %}" href="/home">
+                            <i class="bi bi-house"></i> Home
+                        </a>
+                    </li>
+                    
+                    <!-- Camera Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if active_page in ['fullscreen-camera', 'all-cameras'] %}active{% endif %}" 
+                           href="#" id="cameraDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-camera-video"></i> Cameras
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="cameraDropdown">
+                            <li>
+                                <a class="dropdown-item {% if active_page == 'fullscreen-camera' %}active{% endif %}" 
+                                   href="/fullscreen-camera">
+                                   Single Camera View
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if active_page == 'all-cameras' %}active{% endif %}" 
+                                   href="/all-cameras">
+                                   All Cameras
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if active_page == 'recordings' %}active{% endif %}" 
+                                   href="/recordings">
+                                   Recordings
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <!-- Controls Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if active_page in ['thruster-testing', 'controller-mapping'] %}active{% endif %}" 
+                           href="#" id="controlsDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-joystick"></i> Controls
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="controlsDropdown">
+                            <li>
+                                <a class="dropdown-item {% if active_page == 'thruster-testing' %}active{% endif %}" 
+                                   href="/thruster-testing">
+                                   <i class="bi bi-gear-fill"></i> Thruster Testing
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if active_page == 'controller-mapping' %}active{% endif %}" 
+                                   href="/controller-mapping">
+                                   <i class="bi bi-controller"></i> Controller Mapping
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'node-status' %}active{% endif %}" href="/node-status">
+                            <i class="bi bi-activity"></i> Node Status
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'logs' %}active{% endif %}" href="/logs">
+                            <i class="bi bi-terminal"></i> Logs
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    {% block scripts %}
+    <script src="/static/bootstrap-v5.3.3.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="/static/socketio_listener.js"></script>
+    {% endblock %}
+</body>
+</html>

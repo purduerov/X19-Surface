@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Node Status{% endblock %}
+
+{% block styles %}
+<style>
+  .status-badge {
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+    border-radius: 0.25rem;
+    width: 100%;
+    text-align: center;
+  }
+  .active-node {
+    background-color: #d1e7dd;
+    color: #0f5132;
+  }
+  .inactive-node {
+    background-color: #f8d7da;
+    color: #842029;
+  }
+  .card {
+    transition: all 0.3s ease;
+  }
+  .card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  }
+  .table-responsive {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+</style>
+{% endblock %}
+
+{% block body_attributes %}class="bg-light"{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row mb-4">
+    <div class="col">
+      <h1 class="display-5 fw-bold text-center">ROS 2 Node Status</h1>
+      <p class="text-center text-muted">
+        Last updated: <span id="last-updated-time">-</span>
+      </p>
+    </div>
+  </div>
+  
+  <div class="row g-4">
+    <!-- Surface Nodes Card -->
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <span class="fs-5">Surface Nodes</span>
+          <span class="badge bg-light text-dark rounded-pill" id="surface-node-count">0</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0" id="surface-node-table">
+              <thead class="table-light">
+                <tr>
+                  <th>Node Name</th>
+                  <th class="text-center" style="width: 150px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Surface nodes will be added here dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Core Nodes Card -->
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+          <span class="fs-5">Core Nodes</span>
+          <span class="badge bg-light text-dark rounded-pill" id="core-node-count">0</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0" id="core-node-table">
+              <thead class="table-light">
+                <tr>
+                  <th>Node Name</th>
+                  <th class="text-center" style="width: 150px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Core nodes will be added here dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row mt-4">
+    <div class="col text-center">
+      <div class="alert alert-info" role="alert" id="connection-status">
+        Connection Status: Connected
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="static/socketio/socketio_heartbeat_listener.js"></script>
+{% endblock %}
