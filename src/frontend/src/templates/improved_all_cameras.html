@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}ImprovedAllCameras{% endblock %}
+
+{% block styles %}
+<style>
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background: #111;
+    overflow: hidden;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  .camera-page {
+    --side-width: 320px;
+    --side-height: 180px;
+    --side-camera-count: 3;
+
+    width: 100%;
+    height: calc(100vh - var(--top-bar-height));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 8px var(--side-width);
+    padding: 8px;
+  }
+
+  .camera-page.bottom-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 8px var(--side-height);
+  }
+
+  .side-cameras {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: repeat(var(--side-camera-count), minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .bottom-layout .side-cameras {
+    grid-template-columns: repeat(var(--side-camera-count), minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .camera-divider {
+    cursor: col-resize;
+    background: #2f3439;
+  }
+
+  .camera-divider:hover {
+    background: #6c757d;
+  }
+
+  .bottom-layout .camera-divider {
+    cursor: row-resize;
+  }
+
+  .camera-box {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: #000;
+    cursor: pointer;
+  }
+
+  .camera-label {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+    max-width: calc(100% - 16px);
+    padding: 4px 8px;
+    overflow: hidden;
+    color: #fff;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .depth-overlay {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 3;
+    padding: 4px 8px;
+    color: #fff;
+    font-size: clamp(11px, 1.4vw, 14px);
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.65);
+  }
+
+  .camera-stream {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    pointer-events: none;
+  }
+
+  .hotkey-help {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    z-index: 20;
+    max-width: 230px;
+    padding: 8px 10px;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.35;
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .hotkey-help strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  @media (max-width: 800px) {
+    .camera-page {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) 8px var(--side-height);
+    }
+
+    .camera-divider {
+      cursor: row-resize;
+    }
+
+    .side-cameras {
+      grid-template-columns: repeat(var(--side-camera-count), minmax(0, 1fr));
+      grid-template-rows: minmax(0, 1fr);
+      gap: 6px;
+    }
+
+    .camera-label {
+      max-width: calc(100% - 16px);
+    }
+
+    .hotkey-help {
+      right: 8px;
+      bottom: 8px;
+      font-size: 11px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block body_attributes %}class="bg-dark"{% endblock %}
+
+{% block content %}
+<div class="camera-page">
+  <div id="main-camera" class="camera-box main-camera" data-camera="1">
+    <div class="camera-label">Camera 1</div>
+    <div id="depth-overlay" class="depth-overlay">Depth: -- m</div>
+    <iframe class="camera-stream" src="{{ camera_urls.camera1|safe }}" scrolling="no"></iframe>
+  </div>
+
+  <div id="camera-divider" class="camera-divider"></div>
+
+  <div id="side-cameras" class="side-cameras">
+    <div class="camera-box" data-camera="2">
+      <div class="camera-label">Camera 2</div>
+      <iframe class="camera-stream" src="{{ camera_urls.camera2|safe }}" scrolling="no"></iframe>
+    </div>
+
+    <div class="camera-box" data-camera="3">
+      <div class="camera-label">Camera 3</div>
+      <iframe class="camera-stream" src="{{ camera_urls.camera3|safe }}" scrolling="no"></iframe>
+    </div>
+
+    <div class="camera-box" data-camera="4">
+      <div class="camera-label">Camera 4</div>
+      <iframe class="camera-stream" src="{{ camera_urls.camera4|safe }}" scrolling="no"></iframe>
+    </div>
+  </div>
+</div>
+
+<div id="hotkey-help" class="hotkey-help">
+  <strong>Hotkeys</strong>
+  Shift+H: hide/show nav<br>
+  Shift+L: side/bottom layout<br>
+  Shift+4: 4 cameras<br>
+  Shift+5: 5 cameras<br>
+  Shift+6: 6 cameras<br>
+  Shift+?: hide/show this
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  const mainCamera = document.getElementById("main-camera");
+  const sideCameras = document.getElementById("side-cameras");
+  const cameraPage = document.querySelector(".camera-page");
+  const cameraDivider = document.getElementById("camera-divider");
+  const hotkeyHelp = document.getElementById("hotkey-help");
+  const cameras = [
+    { number: "1", label: "Camera 1", streamUrl: "{{ camera_urls.camera1|safe }}" },
+    { number: "2", label: "Camera 2", streamUrl: "{{ camera_urls.camera2|safe }}" },
+    { number: "3", label: "Camera 3", streamUrl: "{{ camera_urls.camera3|safe }}" },
+    { number: "4", label: "Camera 4", streamUrl: "{{ camera_urls.camera4|safe }}" },
+    { number: "cv", label: "CV Camera", streamUrl: "{{ camera_urls.cv_camera|safe }}" },
+    { number: "5", label: "Camera 5", streamUrl: "{{ camera_urls.camera5|safe }}" }
+  ];
+  let latestDepthText = "Depth: -- m";
+  let activeCameraCount = 4;
+  let layoutMode = "side";
+
+  function addDepthOverlay() {
+    let depthOverlay = document.getElementById("depth-overlay");
+
+    if (!depthOverlay) {
+      depthOverlay = document.createElement("div");
+      depthOverlay.id = "depth-overlay";
+      depthOverlay.className = "depth-overlay";
+      mainCamera.appendChild(depthOverlay);
+    }
+
+    depthOverlay.textContent = latestDepthText;
+  }
+
+  function getCameraContent(cameraBox) {
+    return {
+      number: cameraBox.dataset.camera,
+      label: cameraBox.querySelector(".camera-label").textContent,
+      streamUrl: cameraBox.querySelector("iframe").src
+    };
+  }
+
+  function setCameraContent(cameraBox, cameraContent) {
+    cameraBox.dataset.camera = cameraContent.number;
+    cameraBox.innerHTML = `
+      <div class="camera-label">${cameraContent.label}</div>
+      <iframe class="camera-stream" src="${cameraContent.streamUrl}" scrolling="no"></iframe>
+    `;
+  }
+
+  function buildSideCamera(cameraContent) {
+    const cameraBox = document.createElement("div");
+    cameraBox.className = "camera-box";
+    setCameraContent(cameraBox, cameraContent);
+    return cameraBox;
+  }
+
+  function showCameraLayout(cameraCount) {
+    activeCameraCount = cameraCount;
+    const visibleCameras = cameras.slice(0, activeCameraCount);
+    const currentMainCamera = getCameraContent(mainCamera);
+    const keepCurrentMain = visibleCameras.some(function (camera) {
+      return camera.number === currentMainCamera.number;
+    });
+    const nextMainCamera = keepCurrentMain ? currentMainCamera : visibleCameras[0];
+
+    setCameraContent(mainCamera, nextMainCamera);
+    addDepthOverlay();
+
+    sideCameras.innerHTML = "";
+    cameraPage.style.setProperty("--side-camera-count", activeCameraCount - 1);
+
+    visibleCameras.forEach(function (camera) {
+      if (camera.number !== nextMainCamera.number) {
+        sideCameras.appendChild(buildSideCamera(camera));
+      }
+    });
+  }
+
+  function toggleLayoutMode() {
+    layoutMode = layoutMode === "side" ? "bottom" : "side";
+    cameraPage.classList.toggle("bottom-layout", layoutMode === "bottom");
+  }
+
+  function toggleHotkeyHelp() {
+    hotkeyHelp.classList.toggle("hidden");
+  }
+
+  sideCameras.addEventListener("click", function (event) {
+    const clickedCamera = event.target.closest(".camera-box");
+
+    if (!clickedCamera) {
+      return;
+    }
+
+    const oldMainCamera = getCameraContent(mainCamera);
+    const newMainCamera = getCameraContent(clickedCamera);
+
+    setCameraContent(mainCamera, newMainCamera);
+    addDepthOverlay();
+
+    setCameraContent(clickedCamera, oldMainCamera);
+  });
+
+  document.addEventListener("keydown", function (event) {
+    const tagName = event.target.tagName;
+    const isTyping = tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || event.target.isContentEditable;
+
+    if (isTyping || !event.shiftKey) {
+      return;
+    }
+
+    if (event.code === "Digit4" || event.code === "Digit5" || event.code === "Digit6") {
+      showCameraLayout(Number(event.code.replace("Digit", "")));
+    } else if (event.key.toLowerCase() === "l") {
+      toggleLayoutMode();
+    } else if (event.key === "?") {
+      toggleHotkeyHelp();
+    }
+  });
+
+  socket.on("depth", function (msg) {
+    msg = typeof msg === "string" ? JSON.parse(msg) : msg;
+    latestDepthText = `Depth: ${msg.data.toFixed(2)} m`;
+    addDepthOverlay();
+  });
+
+  cameraDivider.addEventListener("pointerdown", function (event) {
+    event.preventDefault();
+    cameraDivider.setPointerCapture(event.pointerId);
+    document.body.style.userSelect = "none";
+  });
+
+  cameraDivider.addEventListener("pointermove", function (event) {
+    if (!cameraDivider.hasPointerCapture(event.pointerId)) {
+      return;
+    }
+
+    const pageBounds = cameraPage.getBoundingClientRect();
+    const useBottomResize = layoutMode === "bottom" || window.innerWidth <= 800;
+
+    if (useBottomResize) {
+      const sideHeight = pageBounds.bottom - event.clientY - 8;
+      const maxSideHeight = pageBounds.height * 0.45;
+      const newSideHeight = Math.max(100, Math.min(sideHeight, maxSideHeight));
+      cameraPage.style.setProperty("--side-height", `${newSideHeight}px`);
+    } else {
+      const sideWidth = pageBounds.right - event.clientX - 8;
+      const maxSideWidth = pageBounds.width * 0.45;
+      const newSideWidth = Math.max(180, Math.min(sideWidth, maxSideWidth));
+      cameraPage.style.setProperty("--side-width", `${newSideWidth}px`);
+    }
+  });
+
+  cameraDivider.addEventListener("pointerup", function (event) {
+    cameraDivider.releasePointerCapture(event.pointerId);
+    document.body.style.userSelect = "";
+  });
+
+</script>
+{% endblock %}

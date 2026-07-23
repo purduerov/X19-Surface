@@ -38,7 +38,8 @@ class Frontend:
             'camera1': os.getenv('CAMERA1_URL', 'http://localhost:8889/camera_1'),
             'camera2': os.getenv('CAMERA2_URL', 'http://localhost:8889/camera_2'),
             'camera3': os.getenv('CAMERA3_URL', 'http://localhost:8889/camera_3'),
-            'camera4': os.getenv('CAMERA4_URL', 'http://localhost:8889/camera_4')
+            'camera4': os.getenv('CAMERA4_URL', 'http://localhost:8889/camera_4'),
+            'camera5': os.getenv('CAMERA5_URL', 'http://localhost:8889/camera_5')
         }
 
         # For FFmpeg snapshot
@@ -47,7 +48,8 @@ class Frontend:
             "camera1": "rtsp://127.0.0.1:8554/camera_1",
             "camera2": "rtsp://127.0.0.1:8554/camera_2",
             "camera3": "rtsp://127.0.0.1:8554/camera_3",
-            "camera4": "rtsp://127.0.0.1:8554/camera_4"
+            "camera4": "rtsp://127.0.0.1:8554/camera_4",
+            "camera5": "rtsp://127.0.0.1:8554/camera_5"
         }        
 
 
@@ -98,6 +100,14 @@ class Frontend:
             return render_template(
                 "all_cameras.html",
                 active_page="all-cameras",
+                camera_urls=self.camera_urls,
+            )
+
+        @self.app.route("/improved-all-cameras")
+        def improved_all_cameras():
+            return render_template(
+                "improved_all_cameras.html",
+                active_page="improved-all-cameras",
                 camera_urls=self.camera_urls,
             )
 

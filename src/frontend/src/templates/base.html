@@ -8,6 +8,19 @@
     <link rel="stylesheet" href="/static/bootstrap-v5.3.3.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/bootstrap-overrides.css">
+    <style>
+        :root {
+            --top-bar-height: 56px;
+        }
+
+        body.hide-top-bar {
+            --top-bar-height: 0px;
+        }
+
+        body.hide-top-bar .navbar {
+            display: none;
+        }
+    </style>
     {% block styles %}{% endblock %}
 </head>
 <body {% block body_attributes %}{% endblock %}>
@@ -27,7 +40,7 @@
                     
                     <!-- Camera Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if active_page in ['fullscreen-camera', 'all-cameras'] %}active{% endif %}" 
+                        <a class="nav-link dropdown-toggle {% if active_page in ['fullscreen-camera', 'all-cameras', 'improved-all-cameras', 'recordings'] %}active{% endif %}" 
                            href="#" id="cameraDropdown" role="button" 
                            data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-camera-video"></i> Cameras
@@ -43,6 +56,12 @@
                                 <a class="dropdown-item {% if active_page == 'all-cameras' %}active{% endif %}" 
                                    href="/all-cameras">
                                    All Cameras
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if active_page == 'improved-all-cameras' %}active{% endif %}" 
+                                   href="/improved-all-cameras">
+                                   ImprovedAllCameras
                                 </a>
                             </li>
                             <li>
@@ -98,6 +117,20 @@
     <script src="/static/bootstrap-v5.3.3.js"></script>
     <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <script src="/static/socketio_listener.js"></script>
+    <script>
+        document.addEventListener("keydown", function (event) {
+            const tagName = event.target.tagName;
+            const isTyping = tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || event.target.isContentEditable;
+
+            if (isTyping) {
+                return;
+            }
+
+            if (event.shiftKey && event.key.toLowerCase() === "h") {
+                document.body.classList.toggle("hide-top-bar");
+            }
+        });
+    </script>
     {% endblock %}
 </body>
 </html>
