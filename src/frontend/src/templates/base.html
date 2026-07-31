@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="/static/bootstrap-v5.3.3.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/bootstrap-overrides.css">
+    <link rel="stylesheet" href="/static/tailwind.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
     {% block styles %}{% endblock %}
 </head>
 <body {% block body_attributes %}{% endblock %}>
@@ -45,12 +49,6 @@
                                    All Cameras
                                 </a>
                             </li>
-                            <li>
-                                <a class="dropdown-item {% if active_page == 'recordings' %}active{% endif %}" 
-                                   href="/recordings">
-                                   Recordings
-                                </a>
-                            </li>
                         </ul>
                     </li>
                     
@@ -75,17 +73,6 @@
                                 </a>
                             </li>
                         </ul>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'node-status' %}active{% endif %}" href="/node-status">
-                            <i class="bi bi-activity"></i> Node Status
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'logs' %}active{% endif %}" href="/logs">
-                            <i class="bi bi-terminal"></i> Logs
-                        </a>
                     </li>
                 </ul>
             </div>

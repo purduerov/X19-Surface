@@ -1,0 +1,123 @@
+/* Custom ROV UI Tailwind Component Abstractions */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Compatibility overrides for Bootstrap Navbar + Tailwind Preflight */
+@media (min-width: 992px) {
+  .navbar-expand-lg .navbar-collapse {
+    display: flex !important;
+    visibility: visible !important;
+    flex-basis: auto !important;
+  }
+}
+
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link.active {
+  color: #ffffff !important;
+}
+
+@layer components {
+  /* Dashboard Grid Layout */
+  .dashboard-grid {
+    @apply grid grid-cols-[1.2fr_1fr_1.2fr] gap-[10px] h-[calc(100vh-75px)] p-[10px] box-border;
+  }
+  .dashboard-col {
+    @apply flex flex-col gap-[10px] h-full min-h-0;
+  }
+
+  /* Camera Streams */
+  .stream-wrapper {
+    @apply flex-1 bg-black rounded overflow-hidden;
+  }
+  .stream-iframe {
+    @apply w-full h-full border-none;
+  }
+
+  /* Thrusters & Speedos */
+  .speedo-grid {
+    @apply flex-[2.5] grid grid-cols-2 grid-rows-3 gap-[10px] bg-[#031a36] p-[10px] rounded-lg;
+  }
+  .thruster-cell {
+    @apply bg-rov-item rounded flex flex-col items-center justify-center;
+  }
+  .thruster-canvas {
+    @apply max-h-[85%] max-w-[90%];
+  }
+  .thruster-label {
+    @apply text-base mt-1 text-white;
+  }
+
+  /* Motion Commands */
+  .command-container {
+    @apply flex-1 flex flex-col gap-[10px];
+  }
+  .command-box {
+    @apply flex-1 bg-rov-item border border-rov-border rounded-md flex flex-col justify-center items-center;
+  }
+  .command-label {
+    @apply text-[1.1rem] mb-0.5 text-white;
+  }
+  .command-value {
+    @apply text-[1.3rem] font-bold text-white;
+  }
+
+  /* Telemetry Data Containers & Items */
+  .connected-group {
+    @apply flex-[1.5] flex flex-col min-h-0;
+  }
+  .task-btn-container {
+    @apply flex-none h-[50px];
+  }
+  .task-open-btn {
+    @apply w-full h-full bg-rov-btn hover:bg-rov-btn-hover text-white border border-rov-border cursor-pointer text-[1.2rem] rounded-t-md font-sans;
+  }
+  .data-group {
+    @apply flex-1 bg-rov-panel border border-rov-border rounded-md p-2 grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-2;
+  }
+  .data-group-connected {
+    @apply flex-1 bg-rov-panel border border-rov-border border-t-0 rounded-b-md p-2 grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-2;
+  }
+  .data-card {
+    @apply bg-rov-item rounded flex flex-col justify-center items-center text-center p-[5px];
+  }
+  .data-label {
+    @apply text-[0.85rem] text-white;
+  }
+  .data-value {
+    @apply text-[1.1rem] font-bold text-white;
+  }
+
+  /* Task Modal Components */
+  .modal-overlay {
+    @apply hidden fixed inset-0 z-modal w-full h-full bg-black/85 justify-center items-center p-5 box-border;
+  }
+  .modal-card {
+    @apply bg-rov-panel w-[95%] max-w-[1100px] max-h-[85vh] max-sm:w-full max-sm:max-h-[95vh] p-6 max-sm:p-4 rounded-xl border-2 border-rov-border overflow-y-auto shadow-[0_0_20px_rgba(0,230,255,0.2)] box-border;
+  }
+  .modal-header {
+    @apply flex justify-between items-center mb-5 border-b border-rov-border pb-2.5;
+  }
+  .modal-title {
+    @apply text-white text-2xl font-bold;
+  }
+  .modal-close {
+    @apply text-[35px] cursor-pointer leading-none text-white;
+  }
+  .task-grid {
+    @apply grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] max-sm:grid-cols-1 gap-5;
+  }
+  .rov-task-card {
+    @apply bg-rov-item p-[15px] rounded-lg border-l-4 border-rov-border;
+  }
+  .task-card-title {
+    @apply m-0 mb-2.5 text-[1.1rem] font-bold text-white;
+  }
+  .task-card-list {
+    @apply m-0 pl-5 text-white list-disc;
+  }
+}

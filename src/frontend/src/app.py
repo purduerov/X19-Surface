@@ -122,21 +122,6 @@ class Frontend:
                 "thruster_testing.html", active_page="thruster-testing"
             )
 
-        # Node status page
-        @self.app.route("/node-status")
-        def node_status():
-            return render_template("node_status.html", active_page="node-status")
-
-        # Logs page
-        @self.app.route("/logs")
-        def logs():
-            return render_template("logs.html", active_page="logs")
-
-        # Recordings page
-        @self.app.route("/recordings")
-        def recordings_page():
-            return render_template("recordings.html", active_page="recordings")
-
         @self.app.route("/controller-mapping")
         def controller_mapping():
             return render_template(
