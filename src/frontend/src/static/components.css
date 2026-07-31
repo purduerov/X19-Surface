@@ -120,4 +120,24 @@
   .task-card-list {
     @apply m-0 pl-5 text-white list-disc;
   }
+
+  /* Camera Grid Page Components */
+  .camera-grid-container {
+    @apply container mx-auto p-4 max-w-7xl;
+  }
+  .camera-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+  .camera-cell {
+    @apply bg-black rounded-lg overflow-hidden relative aspect-video shadow-lg;
+  }
+  .camera-label {
+    @apply absolute top-2.5 left-2.5 bg-black/60 text-white px-2.5 py-1 rounded font-bold z-10 text-sm;
+  }
+  .photo-button {
+    @apply absolute bottom-2.5 left-2.5 bg-black/60 hover:bg-black/80 text-white border-none rounded px-2.5 py-1 cursor-pointer z-10 text-sm transition-colors;
+  }
+  .fullscreen-button {
+    @apply absolute bottom-2.5 right-2.5 bg-black/60 hover:bg-black/80 text-white border-none rounded px-2.5 py-1 cursor-pointer z-10 text-sm transition-colors;
+  }
 }
