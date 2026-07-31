@@ -147,11 +147,16 @@ socket.on('depth', function(msg) {
   msg = JSON.parse(msg);
   document.getElementById("depth-data").innerHTML = "Depth : " + msg.data.toFixed(2);
 });
+socket.on('hat_temp', function(msg) {
+  msg = JSON.parse(msg);
+  document.getElementById("hat-temp").innerHTML = "Temperature: <br>" + msg.temperature.toFixed(2) + "&deg C";
+});
 
- socket.on('pi_temp', function(msg) {
-   msg = JSON.parse(msg);
-   document.getElementById("pi-temp").innerHTML = "Temperature: <br>" + msg.data.toFixed(2) + "&deg C";
- });
+
+socket.on('pi_temp', function(msg) {
+  msg = JSON.parse(msg);
+  document.getElementById("pi-temp").innerHTML = "Temperature: <br>" + msg.data.toFixed(2) + "&deg C";
+});
 
 socket.on('leak_sensor', function(msg){
   msg = JSON.parse(msg);

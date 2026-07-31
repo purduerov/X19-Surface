@@ -1,0 +1,27 @@
+# ROV X-19 Surface Multi-Node Orchestration Configuration
+session_name: rov_x19
+
+# Default mode: dev (includes tailwind watcher) | field (runs pre-compiled CSS, skips watcher)
+default_mode: dev
+
+# Node definitions
+nodes:
+  - name: "Flask Backend"
+    cwd: "src/frontend/src"
+    cmd: "python3 app.py"
+    mode: "all"  # Runs in both dev and field modes
+
+  - name: "Tailwind CSS Watcher"
+    cwd: "src/frontend"
+    cmd: "npm run dev:css"
+    mode: "dev"  # Only runs in dev mode
+
+  - name: "ZMQ Depth Subscriber Node"
+    cwd: "."
+    cmd: "python3 src/zmq/python/messaging/depth_subscriber_node.py"
+    mode: "all"
+
+  - name: "ZMQ Demo Telemetry Publisher"
+    cwd: "."
+    cmd: "python3 testing/hello_pub.py"
+    mode: "all"

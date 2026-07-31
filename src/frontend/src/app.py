@@ -26,6 +26,7 @@ class Frontend:
     def __init__(self):
         # Setup the flask app
         self.app = Flask(__name__)
+        self.app.config["TEMPLATES_AUTO_RELOAD"] = True
         CORS(self.app)
         # Add a secret key for the session
         self.app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(24).hex())
@@ -90,6 +91,10 @@ class Frontend:
             return render_template(
                 "innovative_ui.html", active_page="home", camera_urls=self.camera_urls
             )
+
+        @self.app.route("/demo")
+        def demo():
+            return render_template("demo_zmq_subscriber.html", active_page="demo")
 
         ### -------- CAMERA PAGES -------- ###
 

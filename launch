@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+import os
+import sys
+import argparse
+import subprocess
+import shutil
+import yaml
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+YAML_PATH = os.path.join(ROOT_DIR, "launch.yaml")
+
+def check_dependencies():
+    if not shutil.which("tmux"):
+        print("❌ Error: 'tmux' is not installed on this system. Please install it using 'sudo apt install tmux'.")
+        sys.exit(1)
+
+def load_config():
+    if not os.path.exists(YAML_PATH):
+        print(f"❌ Error: Configuration file '{YAML_PATH}' not found.")
+        sys.exit(1)
+    with open(YAML_PATH, "r") as f:
+        return yaml.safe_load(f)
+
+def run_cmd(cmd_str, check=True):
+    return subprocess.run(cmd_str, shell=True, check=check, capture_output=True, text=True)
+
+def stop_session(session_name):
+    res = run_cmd(f"tmux has-session -t {session_name}", check=False)
+    if res.returncode == 0:
+        print(f"🛑 Stopping tmux session '{session_name}'...")
+        run_cmd(f"tmux kill-session -t {session_name}")
+        print("✅ All nodes stopped successfully.")
+    else:
+        print(f"ℹ️ No active session named '{session_name}' found.")
+
+def build_css_once():
+    frontend_dir = os.path.join(ROOT_DIR, "src/frontend")
+    print("🎨 Pre-building Tailwind CSS bundle...")
+    res = run_cmd(f"cd '{frontend_dir}' && npm run build:css", check=False)
+    if res.returncode == 0:
+        print("✅ Tailwind CSS built successfully.")
+    else:
+        print(f"⚠️ Tailwind build warning: {res.stderr.strip()}")
+
+def wrap_command(cmd):
+    # Pass PYTHONPATH and PYTHONUNBUFFERED so python scripts can locate src module from anywhere
+    return f"export PYTHONPATH='{ROOT_DIR}'; export PYTHONUNBUFFERED=1; {cmd}"
+
+def launch_session(mode):
+    check_dependencies()
+    config = load_config()
+    session_name = config.get("session_name", "rov_x19")
+
+    # Stop any existing session
+    stop_session(session_name)
+
+    # Pre-build CSS
+    build_css_once()
+
+    # Filter nodes based on mode
+    nodes = config.get("nodes", [])
+    active_nodes = []
+    for node in nodes:
+        node_mode = node.get("mode", "all")
+        if node_mode == "all" or node_mode == mode:
+            active_nodes.append(node)
+
+    if not active_nodes:
+        print("❌ No active nodes configured for mode:", mode)
+        sys.exit(1)
+
+    print(f"\n🚀 Launching ROV Surface Nodes in [{mode.upper()}] mode inside tmux session '{session_name}'...")
+    print("--------------------------------------------------------------------------------")
+
+    # Create initial tmux session with the first node
+    first_node = active_nodes[0]
+    first_cwd = os.path.abspath(os.path.join(ROOT_DIR, first_node.get("cwd", ".")))
+    first_cmd = wrap_command(first_node["cmd"])
+    first_name = first_node.get("name", "Node 1")
+
+    print(f"  [Pane 1] Launching '{first_name}' ({first_node['cmd']})")
+    run_cmd(f"tmux new-session -d -s {session_name} -n 'ROV_Nodes' -c '{first_cwd}' \"{first_cmd}\"")
+
+    # Add remaining nodes as split panes
+    for idx, node in enumerate(active_nodes[1:], start=2):
+        name = node.get("name", f"Node {idx}")
+        cwd = os.path.abspath(os.path.join(ROOT_DIR, node.get("cwd", ".")))
+        cmd = wrap_command(node["cmd"])
+
+        print(f"  [Pane {idx}] Launching '{name}' ({node['cmd']})")
+        run_cmd(f"tmux split-window -t {session_name}:0 -c '{cwd}' \"{cmd}\"")
+
+    # Enable mouse mode (click panes to focus, scroll wheel for logs, drag borders)
+    run_cmd(f"tmux set-option -t {session_name} mouse on", check=False)
+    # Bind 'Ctrl+B' then 'q' to kill the entire session and all nodes
+    run_cmd("tmux bind-key -T prefix q kill-session", check=False)
+    # Re-balance pane layout nicely & keep panes alive if process exits so user can read logs
+    run_cmd(f"tmux set-option -t {session_name} remain-on-exit on", check=False)
+    run_cmd(f"tmux select-layout -t {session_name}:0 tiled", check=False)
+
+    print("--------------------------------------------------------------------------------")
+    print(f"✅ All {len(active_nodes)} nodes launched successfully!")
+    print("\n📌 Mouse & Keyboard Controls:")
+    print("  • Focus pane: CLICK any pane with your mouse")
+    print("  • Scroll logs: SCROLL UP/DOWN with your mouse wheel")
+    print("  • Kill all nodes & exit: Press 'Ctrl+B' then 'q', or open a new terminal and run './stop'")
+    print("  • Detach session (keep running in background): Press 'Ctrl+B' then 'd'\n")
+
+    # Attach to the tmux session
+    os.execvp("tmux", ["tmux", "attach-session", "-t", session_name])
+
+def main():
+    parser = argparse.ArgumentParser(description="ROV X-19 Surface Multi-Node Orchestrator")
+    parser.add_argument("--dev", action="store_true", help="Launch in Development mode (includes Tailwind watcher)")
+    parser.add_argument("--field", "--prod", dest="field", action="store_true", help="Launch in Field Deployment mode (skips Tailwind watcher)")
+    parser.add_argument("--stop", action="store_true", help="Stop all running ROV nodes and kill the tmux session")
+
+    args = parser.parse_args()
+
+    config = load_config()
+    session_name = config.get("session_name", "rov_x19")
+
+    if args.stop:
+        stop_session(session_name)
+        return
+
+    if args.field:
+        mode = "field"
+    elif args.dev:
+        mode = "dev"
+    else:
+        mode = config.get("default_mode", "dev")
+
+    launch_session(mode)
+
+if __name__ == "__main__":
+    main()

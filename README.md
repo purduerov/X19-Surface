@@ -1,43 +1,98 @@
-# X19-Surface
+# ROV X-19 Surface Software (X19-Surface)
 
-TODO: Add description and Repo layout
+Welcome to the **X19-Surface** repository — the topside control software for Purdue ROV's X-19 vehicle. 
+
+This repository houses the ground control station interface, real-time video feeds, telemetry displays, ZeroMQ (ZMQ) hardware messaging wrappers, Protocol Buffer (Protobuf) schemas, and the Flask web application.
+
+---
+
+## 📁 Repository Layout
+
+```
+X19-Surface/
+├── launch                    # Executable multi-node orchestrator script (tmux-based)
+├── launch.yaml               # Declarative configuration for ZMQ nodes, Flask, & Tailwind
+├── proto/                    # Google Protocol Buffer schema definitions (.proto)
+│   └── telemetry.proto       # Telemetry & joystick command schemas
+├── scripts/                  # System provisioning & compilation scripts
+│   ├── setup.sh              # Automated dependency installation script
+│   └── compile_protos.sh     # Protobuf schema compiler script
+├── src/
+│   ├── frontend/             # Flask web application & Tailwind UI
+│   │   ├── dev-run           # Single-command frontend dev script
+│   │   ├── package.json      # Tailwind CSS build scripts & dependencies
+│   │   └── src/
+│   │       ├── app.py        # Flask backend & Socket.IO server
+│   │       ├── static/       # Static assets (compiled tailwind.css, components.css, JS listeners)
+│   │       ├── tailwind.config.js # ROV UI design system tokens
+│   │       └── templates/    # Jinja2 HTML templates (innovative_ui.html, all_cameras.html, etc.)
+│   └── zmq/                  # ZeroMQ messaging framework
+│       ├── protocols/        # Generated Protobuf bindings (C++ & Python)
+│       └── python/
+│           └── messaging/    # ZMQ Publisher/Subscriber python wrappers & nodes
+└── testing/                  # Demo ZMQ publisher & test scripts (hello_pub.py, etc.)
+```
+
+---
 
 ## ⚙️ Setup & Installation
 
-## For ZMQ Related work
 ### 1. System & Python Dependencies
-Prerequisites include the Protobuf Compiler (`protoc`), ZeroMQ development headers, and Python 3. 
+Prerequisites include the Protobuf Compiler (`protoc`), ZeroMQ development headers (`libzmq3-dev`), `tmux`, and Python 3.
 
 Run the automated setup script to provision your system:
 ```bash
 ./scripts/setup.sh
 ```
-*(This installs `protobuf-compiler` and `libzmq3-dev` via apt-get, and builds the Python dependencies defined in `requirements.txt` into your virtual environment).*
+*(This installs `protobuf-compiler`, `libzmq3-dev`, `tmux`, and builds the Python dependencies defined in `requirements.txt` into your virtual environment).*
 
 ### 2. Compile Protobuf Schemas
 Compile your `.proto` files in the `proto/` directory to generate C++ and Python bindings:
 ```bash
 ./scripts/compile_protos.sh
 ```
-This outputs compiled bindings directly to `src/protocols/cpp` and `src/protocols/python`.
+This outputs compiled bindings directly to `src/zmq/protocols/cpp` and `src/zmq/protocols/python`.
 
 ---
 
-## 🚀 Running the Code for ZMQ
+## 🎛️ Multi-Node Orchestration (`launch.yaml` & `./launch`)
 
-Use the root [run.sh](file:///home/aditya/purdue/ROV/X-19/X19-Surface/run.sh) script to execute your code with the correct python paths set:
+We provide a YAML-driven process orchestrator ([launch.yaml](launch.yaml) + [./launch](launch)) powered by `tmux`. It manages all ZMQ nodes, Flask, and Tailwind CSS in a single terminal session without opening multiple windows.
 
+### 1. Launch in Development Mode (includes live Tailwind watcher)
 ```bash
-# Run the hello_pub test node
-./run.sh
-
-# Recompile protobuf schemas AND run the hello_pub test node
-./run.sh -p
+./launch --dev
 ```
 
+### 2. Launch in Field Deployment Mode (100% offline, pre-compiled CSS)
+```bash
+./launch --field
+```
+
+### 3. Stop All Running Nodes
+```bash
+./launch --stop
+```
+
+### Adding New ZMQ Nodes to `launch.yaml`
+Simply add your new node to the `nodes` list in [launch.yaml](launch.yaml):
+
+```yaml
+nodes:
+  - name: "Your ZMQ Node"
+    cwd: "."
+    cmd: "python3 src/zmq/python/messaging/your_node.py"
+    mode: "all"  # Options: all | dev | field
+```
+
+#### 📌 Tmux Controls inside `./launch`:
+- **Switch between node panes**: Press `Ctrl+B` then **Arrow Keys**.
+- **Detach session (keep nodes running in background)**: Press `Ctrl+B` then `D`.
+- **Re-attach to session**: Run `./launch` or `tmux a`.
+
 ---
 
-## 🛠️ Messaging Wrapper API ZMQ
+## 🛠️ ZeroMQ (ZMQ) Messaging API
 
 To make writing nodes simple and robust, lightweight wrappers wrap ZMQ sockets into easy-to-use classes.
 
@@ -54,21 +109,12 @@ from src.zmq.protocols.python import telemetry_pb2
 publisher = Publisher(address="tcp://127.0.0.1:5555", topic="telemetry")
 
 # Create and publish a Protobuf message
-msg = telemetry_pb2.SensorData(depth=1.24)
+msg = telemetry_pb2.SensorData(depth=1.24, temperature=21.5)
 publisher.publish(msg)
 
 # Clean up
 publisher.close()
 ```
-
-*   `__init__(address: str, topic: str, bind: bool = True)`
-    *   `address`: ZMQ address endpoint (e.g., `tcp://*:5555`).
-    *   `topic`: Topic name string.
-    *   `bind`: Binds socket to the port if `True`; connects if `False`.
-*   `publish(proto_message)`
-    *   Serializes the Protobuf class instance and publishes it.
-*   `close()`
-    *   Closes the underlying ZMQ socket.
 
 #### 2. Subscriber (`src.zmq.python.messaging.Subscriber`)
 Creates a ZMQ `SUB` socket that connects to a publisher, subscribes to a topic, and parses incoming Protobuf payloads.
@@ -78,7 +124,7 @@ from src.zmq.python.messaging import Subscriber
 from src.zmq.protocols.python import telemetry_pb2
 
 def telemetry_callback(data):
-    print(f"Received depth: {data.depth}")
+    print(f"Received depth: {data.depth} m, temp: {data.temperature} C")
 
 # Initialize subscriber (connects to address by default)
 subscriber = Subscriber(
@@ -88,36 +134,41 @@ subscriber = Subscriber(
     callback=telemetry_callback
 )
 
-# Process a single incoming message (timeout in milliseconds)
+# Process incoming messages in a loop
 subscriber.spin_once(timeout_ms=100)
 
 # Clean up
 subscriber.close()
 ```
 
-*   `__init__(address: str, topic: str, message_type, callback, bind: bool = False)`
-    *   `address`: Target publisher endpoint (e.g., `tcp://127.0.0.1:5555`).
-    *   `topic`: Subscribed topic string.
-    *   `message_type`: Protobuf class type used to deserialize payloads.
-    *   `callback`: Callback function signature `def callback(message)`.
-    *   `bind`: Binds socket if `True`; connects if `False`.
-*   `spin_once(timeout_ms: int)`
-    *   Polls the socket. If data is available, it deserializes the payload and invokes the callback. Returns `True` if processed, otherwise `False`.
-*   `close()`
-    *   Closes the underlying ZMQ socket.
+#### 3. ZMQ-to-UI SocketIO Bridge Node
+A standalone Python subscriber node can connect to ZMQ, receive Protobuf telemetry, and emit JSON events directly to Flask using `socketio.Client()`:
 
-#### 3. Running The Code
-- set python path to dir root
-```bash
-export PYTHONPATH=<project_root>
-```
-- run publisher using virtual env first
-```bash
-./.venv/bin/python ./testing/hello_pub.py 
-```
-- run subscriber using virtual env next
-```bash
-./.venv/bin/python ./testing/hello_sub.py 
+```python
+import socketio
+import json
+from src.zmq.python.messaging import Subscriber
+from src.zmq.protocols.python import telemetry_pb2
+
+sio = socketio.Client()
+sio.connect("http://127.0.0.1:5013")
+
+def on_telemetry(proto_msg):
+    if sio.connected:
+        sio.emit("depth", json.dumps({"data": proto_msg.depth}))
+
+subscriber = Subscriber(
+    address="tcp://127.0.0.1:5555",
+    topic="telemetry",
+    message_type=telemetry_pb2.SensorData,
+    callback=on_telemetry
+)
 ```
 
+---
 
+## 🎨 Frontend & Tailwind CSS
+
+The frontend software operates **100% offline** without requiring Wi-Fi.
+
+For full frontend documentation, Tailwind component design details, and dev scripts, see [src/frontend/README.md](src/frontend/README.md).
