@@ -89,6 +89,7 @@ nodes:
 - **Switch between node panes**: Press `Ctrl+B` then **Arrow Keys**.
 - **Detach session (keep nodes running in background)**: Press `Ctrl+B` then `D`.
 - **Re-attach to session**: Run `./launch` or `tmux a`.
+- **End the session**: Press `Ctrl + B` then `Q`.
 
 ---
 
