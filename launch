@@ -79,7 +79,10 @@ def launch_session(mode):
     first_name = first_node.get("name", "Node 1")
 
     print(f"  [Pane 1] Launching '{first_name}' ({first_node['cmd']})")
-    run_cmd(f"tmux new-session -d -s {session_name} -n 'ROV_Nodes' -c '{first_cwd}' \"{first_cmd}\"")
+    run_cmd(
+        f"tmux new-session -d -s {session_name} "
+        f"-n 'ROV_Nodes' -c '{first_cwd}' \"{first_cmd}\""
+    )
 
     # Add remaining nodes as split panes
     for idx, node in enumerate(active_nodes[1:], start=2):
@@ -88,7 +91,18 @@ def launch_session(mode):
         cmd = wrap_command(node["cmd"])
 
         print(f"  [Pane {idx}] Launching '{name}' ({node['cmd']})")
-        run_cmd(f"tmux split-window -t {session_name}:0 -c '{cwd}' \"{cmd}\"")
+
+        # Split the current window without switching the active pane
+        run_cmd(
+            f"tmux split-window -d -t {session_name}:0 "
+            f"-c '{cwd}' \"{cmd}\""
+        )
+
+    # Immediately rebalance the panes
+    run_cmd(
+        f"tmux select-layout -t {session_name}:0 tiled",
+        check=False
+    )
 
     # Enable mouse mode (click panes to focus, scroll wheel for logs, drag borders)
     run_cmd(f"tmux set-option -t {session_name} mouse on", check=False)
