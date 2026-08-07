@@ -93,6 +93,73 @@ nodes:
 
 ---
 
+## 📹 Video Streaming Architecture & Go2RTC
+
+The video system uses **Go2RTC** on the Surface computer paired with ZeroMQ (ZMQ) IP discovery and FFmpeg RTSP streaming from the vehicle's Raspberry Pi (`X19-Core`).
+
+```
+┌──────────────────────────────────────────────┐              ┌──────────────────────────────────────────────┐
+│                  X19-Surface                 │              │                   X19-Core                   │
+│               (Topside Laptop)               │              │               (Raspberry Pi)                 │
+│                                              │              │                                              │
+│  ┌────────────────────────────────────────┐  │              │  ┌────────────────────────────────────────┐  │
+│  │ go2rtc_node.py                         │  │  ZMQ PUB     │  │ get_ip.py                              │  │
+│  │ - Binds ZMQ PUB: tcp://*:5556          │──┼──────────────┼─>│ - Connects ZMQ SUB: tcp://<SURFACE>:5556│  │
+│  │ - Topic: 'surface_ip'                  │  │ Port 5556    │  │ - Parses Surface IP payload            │  │
+│  └────────────────────────────────────────┘  │ (Protobuf)   │  └───────────────────┬────────────────────┘  │
+│                                              │              │                      │ Discovers V4L2        │
+│  ┌────────────────────────────────────────┐  │              │                      v Devices               │
+│  │ Go2RTC Server Subprocess               │  │              │  ┌────────────────────────────────────────┐  │
+│  │ - RTSP Ingestion: port 8554            │<─┼──────────────┼──│ FFmpeg Streamers (videos_launch.py)    │  │
+│  │ - WebRTC / API:    port 1984           │  │ RTSP Stream  │  │ - Encodes H.264 / MJPEG                │  │
+│  │ - WebRTC Stream:   port 8555           │  │ Port 8554    │  │ - Pushes rtsp://<SURFACE>:8554/cameraN│  │
+│  └────────────────────────────────────────┘  │              │  └────────────────────────────────────────┘  │
+└──────────────────────────────────────────────┘              └──────────────────────────────────────────────┘
+```
+
+### Video Pipeline Sequence
+1. **Go2RTC Server Launch**: `go2rtc_node.py` starts the `go2rtc` media server binary with [`src/zmq/python/videos/go2rtc.yaml`](src/zmq/python/videos/go2rtc.yaml).
+2. **IP Broadcast**: `go2rtc_node.py` obtains the Surface network IP and publishes it over ZMQ on topic `surface_ip` at `tcp://*:5556` using Protobuf (`telemetry_pb2.test`).
+3. **Core Discovery**: On `X19-Core`, `get_ip.py` receives the surface IP, runs `v4l2-ctl --list-devices` to auto-discover attached cameras (`exploreHD`, `Arducam`, `Intel`), and launches a `videos_launch.py` process for each camera.
+4. **RTSP Ingestion**: `videos_launch.py` runs low-latency FFmpeg pipelines, streaming H.264 video over RTSP to `rtsp://<SURFACE_IP>:8554/camera<N>`.
+5. **Web Interface Display**: Go2RTC serves WebRTC/MSE video streams consumed directly by the Flask frontend UI.
+
+---
+
+## 🌐 Network Ports & Field Deployment Guide
+
+When deploying on the ROV tether network (Topside laptop + Raspberry Pi), use the following port mapping:
+
+| Port | Protocol | Usage / Node | Description |
+|:---:|:---:|:---|:---|
+| **5555** | ZMQ (TCP) | Telemetry Publisher (`hello_pub.py`) | Sensor data, depth, IMU telemetry |
+| **5556** | ZMQ (TCP) | Surface IP Publisher (`go2rtc_node.py`) | Surface IP discovery broadcast for camera streaming |
+| **8554** | RTSP (TCP) | Go2RTC RTSP Receiver | Ingests camera streams pushed from `X19-Core` |
+| **8555** | WebRTC (UDP/TCP) | Go2RTC WebRTC Streaming | Ultra low-latency video streaming to browser UI |
+| **1984** | HTTP | Go2RTC Web API & Control | Go2RTC admin panel and stream status API |
+| **5013** | HTTP / WS | Flask Backend (`app.py`) | Topside web GUI & SocketIO real-time dashboard |
+
+### Field Setup (Over ROV Tether Network)
+1. **Topside Laptop (`X19-Surface`)**:
+   Connect to the tether network (e.g., static IP `192.168.1.100` or DHCP). Launch the system:
+   ```bash
+   ./launch --field
+   ```
+   *The Surface ZMQ publisher automatically binds to `tcp://*:5556` and broadcasts the Surface IP.*
+
+2. **Vehicle Raspberry Pi (`X19-Core`)**:
+   Run the IP subscriber on the Pi, specifying the Surface Topside IP:
+   ```bash
+   python3 src/python/videos/get_ip.py --surface-address tcp://192.168.1.100:5556
+   ```
+   *Alternatively, export the environment variable:*
+   ```bash
+   export SURFACE_ZMQ_ADDRESS="tcp://192.168.1.100:5556"
+   python3 src/python/videos/get_ip.py
+   ```
+
+---
+
 ## 🛠️ ZeroMQ (ZMQ) Messaging API
 
 To make writing nodes simple and robust, lightweight wrappers wrap ZMQ sockets into easy-to-use classes.
@@ -173,3 +240,4 @@ subscriber = Subscriber(
 The frontend software operates **100% offline** without requiring Wi-Fi.
 
 For full frontend documentation, Tailwind component design details, and dev scripts, see [src/frontend/README.md](src/frontend/README.md).
+

@@ -25,3 +25,9 @@ nodes:
     cwd: "."
     cmd: "python3 testing/hello_pub.py"
     mode: "all"
+
+  - name: "ZMQ Go2RTC Video Node"
+    cwd: "."
+    cmd: "python3 src/zmq/python/videos/go2rtc_node.py"
+    mode: "all"
+

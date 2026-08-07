@@ -23,7 +23,13 @@ fi
 echo "Installing Python dependencies..."
 pip install -r "$REPO_ROOT/requirements.txt"
 
-# Make compile script executable
+# Make compile script and install_go2rtc script executable
 chmod +x "$SCRIPT_DIR/compile_protos.sh"
+chmod +x "$SCRIPT_DIR/install_go2rtc.sh"
+
+# Install go2rtc binary
+echo "Running go2rtc installer..."
+"$SCRIPT_DIR/install_go2rtc.sh"
 
 echo "Setup complete! Run scripts/compile_protos.sh to compile your schemas."
+
