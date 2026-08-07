@@ -140,4 +140,140 @@
   .fullscreen-button {
     @apply absolute bottom-2.5 right-2.5 bg-black/60 hover:bg-black/80 text-white border-none rounded px-2.5 py-1 cursor-pointer z-10 text-sm transition-colors;
   }
+
+  /* Fullscreen Camera Page Components */
+  .camera-container {
+    @apply absolute top-[56px] left-0 right-0 bottom-0 overflow-hidden z-10;
+  }
+  .fullscreen-iframe {
+    @apply w-full h-full border-none;
+  }
+  .camera-controls {
+    @apply fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] bg-black/60 backdrop-blur-sm p-3 rounded-xl flex items-center justify-center gap-3 border border-rov-border shadow-lg;
+  }
+  .btn-camera {
+    @apply w-[50px] h-[50px] text-lg font-bold bg-rov-panel hover:bg-rov-item text-white border border-rov-border rounded-lg transition-all flex items-center justify-center cursor-pointer;
+  }
+  .btn-camera.active {
+    @apply border-2 border-white shadow-[0_0_12px_rgba(255,255,255,0.6)] bg-rov-btn text-rov-accent;
+  }
+  .btn-record {
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors h-[50px] text-base;
+  }
+  .btn-record.recording {
+    @apply animate-pulse bg-red-700 border border-white;
+  }
+  .record-icon {
+    @apply inline-block w-3 h-3 bg-white rounded-full;
+  }
+
+  /* Status Indicators (Shared) */
+  .status-indicator {
+    @apply w-3.5 h-3.5 rounded-full inline-block shrink-0 me-1.5 align-middle;
+  }
+  .status-connected {
+    @apply bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)];
+  }
+  .status-stale {
+    @apply bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)];
+  }
+  .status-disconnected {
+    @apply bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)];
+  }
+
+  /* Form Controls & Buttons (Shared) */
+  .rov-input-number {
+    @apply bg-rov-dark border border-rov-border text-white text-center rounded px-3 py-1.5 focus:outline-none focus:border-rov-accent w-full text-base font-semibold;
+  }
+  .rov-input-text {
+    @apply bg-rov-dark border border-rov-border text-white rounded px-3 py-2 focus:outline-none focus:border-rov-accent w-full text-sm font-sans;
+  }
+  .rov-input-range {
+    @apply w-full accent-rov-accent bg-rov-dark cursor-pointer h-2 rounded-lg;
+  }
+  .rov-checkbox {
+    @apply w-4 h-4 rounded border-rov-border bg-rov-dark text-rov-accent focus:ring-rov-accent cursor-pointer accent-rov-accent;
+  }
+  .rov-select {
+    @apply bg-rov-dark border border-rov-border text-white rounded px-3 py-1.5 focus:outline-none focus:border-rov-accent w-full text-sm font-sans cursor-pointer;
+  }
+  .rov-btn-primary {
+    @apply bg-rov-btn hover:bg-rov-btn-hover text-white border border-rov-border font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer text-sm;
+  }
+  .rov-btn-danger {
+    @apply bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer text-sm;
+  }
+  .rov-btn-secondary {
+    @apply bg-slate-700 hover:bg-slate-600 text-white font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer text-sm;
+  }
+  .rov-btn-success {
+    @apply bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer text-sm;
+  }
+
+  /* Thruster Testing Components */
+  .thruster-testing-container {
+    @apply container mx-auto my-8 p-6 bg-rov-panel border border-rov-border rounded-xl shadow-lg max-w-2xl text-white font-orbitron space-y-6;
+  }
+  .thruster-testing-header {
+    @apply flex justify-between items-center border-b border-rov-border pb-4;
+  }
+  .thruster-title {
+    @apply text-2xl font-bold text-rov-accent m-0;
+  }
+  .status-card-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+  .status-card {
+    @apply bg-rov-item border border-rov-border rounded-lg overflow-hidden;
+  }
+  .status-card-header {
+    @apply px-4 py-2 text-xs font-bold text-white uppercase tracking-wider bg-rov-btn border-b border-rov-border;
+  }
+  .status-card-body {
+    @apply p-4 flex items-center text-white text-sm font-sans;
+  }
+  .thruster-table {
+    @apply w-full border-collapse border border-rov-border text-center text-white;
+  }
+  .thruster-table th {
+    @apply border border-rov-border bg-rov-item p-2 text-sm font-bold text-rov-accent;
+  }
+  .thruster-table td {
+    @apply border border-rov-border bg-rov-dark p-2 text-base font-semibold;
+  }
+
+  /* Controller Mapping Components */
+  .mapping-editor-container {
+    @apply container mx-auto p-6 bg-rov-dark min-h-screen text-white font-orbitron space-y-6 max-w-7xl;
+  }
+  .mapping-status-widget {
+    @apply bg-rov-panel border border-rov-border rounded-xl p-4 shadow-md flex flex-col md:flex-row justify-between items-center gap-4;
+  }
+  .config-list-card {
+    @apply bg-rov-panel border border-rov-border rounded-xl p-4 space-y-3;
+  }
+  .config-item {
+    @apply cursor-pointer px-4 py-2.5 rounded-lg bg-rov-item hover:bg-rov-btn transition-colors border border-transparent hover:border-rov-border flex justify-between items-center text-white text-sm font-sans;
+  }
+  .config-item.active {
+    @apply bg-rov-btn border-rov-accent text-rov-accent font-bold;
+  }
+  .editor-form-card {
+    @apply bg-rov-panel border border-rov-border rounded-xl p-6 shadow-md space-y-4;
+  }
+  .axis-config-box {
+    @apply bg-rov-item border border-rov-border rounded-lg p-4 overflow-x-auto;
+  }
+  .mapping-table {
+    @apply w-full border-collapse border border-rov-border text-left text-white text-sm font-sans;
+  }
+  .mapping-table th {
+    @apply border border-rov-border bg-rov-panel p-3 font-bold text-rov-accent uppercase tracking-wider text-xs;
+  }
+  .mapping-table td {
+    @apply border border-rov-border bg-rov-dark p-3 align-middle;
+  }
+  .current-mapping-badge {
+    @apply text-xs px-2.5 py-1 rounded bg-rov-btn border border-rov-border text-rov-accent font-bold;
+  }
 }

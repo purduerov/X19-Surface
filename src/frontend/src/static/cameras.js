@@ -5,8 +5,20 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // Use environment-provided URLs if available, or fall back to default
     const defaultBaseUrl = 'http://localhost:8889/camera_';
-    // Access the camera URLs passed from the template
-    const cameraUrls = window.cameraUrls || {};
+    // Access the camera URLs passed from the template or dataset attribute
+    let cameraUrls = window.cameraUrls;
+    if (!cameraUrls) {
+        const cameraContainer = document.querySelector('.camera-container');
+        if (cameraContainer && cameraContainer.dataset.cameraUrls) {
+            try {
+                cameraUrls = JSON.parse(cameraContainer.dataset.cameraUrls);
+            } catch (e) {
+                console.error("Failed to parse camera URLs from dataset:", e);
+                cameraUrls = {};
+            }
+        }
+    }
+    cameraUrls = cameraUrls || {};
 
     // Get camera from URL parameter if provided
     const urlParams = new URLSearchParams(window.location.search);
