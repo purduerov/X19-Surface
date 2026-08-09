@@ -21,6 +21,11 @@ nodes:
     cmd: "python3 src/zmq/python/messaging/depth_subscriber_node.py"
     mode: "all"
 
+  - name: "ZMQ Stereo Depth Subscriber Node"
+    cwd: "."
+    cmd: "python3 src/zmq/python/messaging/stereo_subscriber_node.py"
+    mode: "all"
+
   - name: "ZMQ Demo Telemetry Publisher"
     cwd: "."
     cmd: "python3 testing/hello_pub.py"

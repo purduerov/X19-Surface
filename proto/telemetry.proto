@@ -29,6 +29,19 @@ message JoystickCommand {
   float yaw = 7;       // -1.0 to 1.0 (heading)
 }
 
+// Stereo depth analysis from the OAK-D W Pro (Core CV) to topside.
+// The OAK-D computes the depth map onboard; the Pi analyzes a central ROI and
+// publishes only this small summary over ZMQ (never the raw depth frame).
+message StereoDepth {
+  uint64 timestamp_us = 1;
+  uint32 width = 2;               // depth frame width (px)
+  uint32 height = 3;              // depth frame height (px)
+  float center_distance_m = 4;    // median depth in the central ROI
+  float min_distance_m = 5;       // nearest valid depth in the ROI (closest obstacle)
+  float max_distance_m = 6;       // farthest valid depth in the ROI
+  float coverage = 7;             // fraction of valid (non-zero) depth pixels in ROI [0..1]
+}
+
 // testing message
 message test {
   string msg = 1;
