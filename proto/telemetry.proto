@@ -40,6 +40,11 @@ message StereoDepth {
   float min_distance_m = 5;       // nearest valid depth in the ROI (closest obstacle)
   float max_distance_m = 6;       // farthest valid depth in the ROI
   float coverage = 7;             // fraction of valid (non-zero) depth pixels in ROI [0..1]
+  // 3D position of the ROI target in the camera frame (meters):
+  // +x right, +y up, +z forward. z equals center_distance_m.
+  float x_m = 8;
+  float y_m = 9;
+  float z_m = 10;
 }
 
 // testing message
