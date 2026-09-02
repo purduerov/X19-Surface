@@ -33,3 +33,21 @@ message JoystickCommand {
 message test {
   string msg = 1;
 }
+
+// depth control, surface -> core
+message depthControlCommand {
+  bool enable_control = 1;
+  bool enable_testing = 2;
+  float target_depth = 3;
+  float k_p = 4; // updated weights to use while testing
+  float k_i = 5;
+  float k_d = 6;
+}
+
+// depth control, core->surface
+// this will only be sent once
+message depthControlData {
+  float k_p = 1; // default hard-coded weights
+  float k_i = 2;
+  float k_d = 3;
+}
