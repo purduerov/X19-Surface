@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{#
+  Controller Buttons
+  Shows every connected controller (e.g. left + right Thrustmaster HOTAS), lights up
+  each button/axis as you use it, and lets you give them nicknames like "Top right button".
+
+  - Numbers are the browser's numbers (they start at 0), the same ones the
+    Controller Config page uses ("button 0", "axis 1", ...).
+  - A hat switch (8-way thumb switch) shows up as 4 buttons: hat up/down/left/right.
+  - Nicknames save automatically to src/frontend/src/controller_names.json (see app.py):
+    { "<controller key>": { "name": "Left stick", "buttons": { "0": "Trigger" }, "axes": { "1": "Pitch" },
+                            "hats": { "9 up": "Camera tilt up" } } }
+  - The controller key is the name the controller reports. If two controllers report
+    the same name, " #2" is added to the second one (so plug them in in the same order).
+  - Shared helpers (getControllers) live in static/controllers.js.
+#}
+
+{% block title %}Controller Buttons{% endblock %}
+
+{% block body_attributes %}class="min-h-screen bg-slate-950 text-white"{% endblock %}
+
+{% block content %}
+<main class="p-6">
+  <div class="mb-1 flex items-center gap-4">
+    <h1 class="text-2xl font-bold">Controller Buttons</h1>
+    <span id="save-status" class="text-xs text-slate-400"></span>
+  </div>
+  <p class="mb-6 text-sm text-slate-400">
+    Press any button or move any axis to see which one it is. Type a nickname next to it; it saves as you type and comes back when you plug the same controller in again.
+  </p>
+
+  <div id="no-controllers" class="rounded-lg bg-slate-900 p-6 text-slate-400">
+    No controllers found. Plug them in and press any button on each one.
+  </div>
+
+  <!-- One card per controller, side by side -->
+  <div id="controllers" class="grid gap-6 xl:grid-cols-2"></div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="/static/controllers.js"></script>
+<script>
+  let names = {};        // saved nicknames (see top of file for the shape)
+  let shownKeys = "";    // which controllers the cards were built for
+  const state = {};      // per controller: { rest: [...axes at start], pressed: [...], hatPressed: {...}, lastText }
+
+  // ---------- Controllers (getControllers() is in static/controllers.js) ----------
+
+  function namesFor(key) {
+    names[key] = names[key] || { name: "", buttons: {}, axes: {} };
+    names[key].hats = names[key].hats || {};
+    return names[key];
+  }
+
+  // "Top right button (button 3)" or just "button 3" if it has no nickname
+  function describe(key, type, number, direction) {
+    const nickname = nicknameFor(namesFor(key), type, number, direction);
+    const name = shortName(type, number, direction);
+    return nickname ? `${nickname} (${name})` : name;
+  }
+
+  // ---------- Building the cards (only when controllers are plugged in / removed) ----------
+
+  function buildCards(controllers) {
+    document.getElementById("no-controllers").hidden = controllers.length > 0;
+    document.getElementById("controllers").innerHTML = controllers.map(({ key, gamepad, hatAxes }, c) => `
+      <section data-controller="${c}" class="rounded-lg bg-slate-900 p-4">
+        <input data-name class="w-full rounded bg-slate-800 px-2 py-1 text-lg font-bold" placeholder="Nickname, e.g. Left stick">
+        <div class="mb-3 mt-1 truncate text-xs text-slate-500">${escapeHtml(key)}</div>
+
+        <div class="mb-4 rounded bg-slate-950 p-3">
+          <span class="text-xs text-slate-400">Last pressed</span>
+          <div data-last class="text-xl font-bold text-sky-400">-</div>
+        </div>
+
+        <h2 class="mb-2 text-sm font-bold text-slate-300">Buttons (${gamepad.buttons.length})</h2>
+        <div class="mb-4 grid grid-cols-2 gap-2 md:grid-cols-3">
+          ${gamepad.buttons.map((button, i) => `
+            <label data-button="${i}" class="rounded border border-slate-700 p-2 text-xs">
+              <span class="font-mono text-slate-400">button ${i}</span>
+              <input data-nickname="buttons" data-number="${i}" class="mt-1 w-full rounded bg-slate-800 px-2 py-1 text-sm text-white" placeholder="nickname">
+            </label>`).join("")}
+        </div>
+
+        ${hatAxes.map(axis => `
+          <h2 class="mb-2 text-sm font-bold text-slate-300">Hat switch (axis ${axis})</h2>
+          <div class="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+            ${HAT_DIRECTIONS.map(direction => `
+              <label data-hat="${axis} ${direction}" class="rounded border border-slate-700 p-2 text-xs">
+                <span class="font-mono text-slate-400">hat ${axis} ${direction}</span>
+                <input data-nickname="hats" data-number="${axis} ${direction}" class="mt-1 w-full rounded bg-slate-800 px-2 py-1 text-sm text-white" placeholder="nickname">
+              </label>`).join("")}
+          </div>`).join("")}
+
+        <h2 class="mb-2 text-sm font-bold text-slate-300">Axes (${gamepad.axes.length})</h2>
+        <div class="space-y-2">
+          ${gamepad.axes.map((value, i) => `
+            <div data-axis="${i}" class="flex items-center gap-2 rounded border border-slate-700 p-2 text-xs">
+              <span class="w-12 font-mono text-slate-400">axis ${i}</span>
+              <input data-nickname="axes" data-number="${i}" class="w-40 rounded bg-slate-800 px-2 py-1 text-sm" placeholder="nickname">
+              <div class="relative h-3 flex-1 overflow-hidden rounded bg-slate-800">
+                <div class="absolute inset-y-0 left-1/2 w-px bg-slate-500"></div>
+                <div data-bar class="absolute inset-y-0 rounded bg-sky-500"></div>
+              </div>
+              <span data-value class="w-16 text-right font-mono">0.00</span>
+            </div>`).join("")}
+        </div>
+      </section>`).join("");
+
+    // Fill in saved nicknames and save whenever one is edited
+    controllers.forEach(function ({ key, gamepad }, c) {
+      const card = document.querySelector(`[data-controller="${c}"]`);
+      const saved = namesFor(key);
+      state[key] = { rest: [...gamepad.axes], pressed: [], hatPressed: {}, lastText: "-" };
+
+      const nameInput = card.querySelector("[data-name]");
+      nameInput.value = saved.name;
+      nameInput.addEventListener("input", function () {
+        saved.name = nameInput.value.trim();
+        saveSoon();
+      });
+
+      card.querySelectorAll("[data-nickname]").forEach(function (input) {
+        const group = saved[input.dataset.nickname];  // saved.buttons or saved.axes
+        input.value = group[input.dataset.number] || "";
+        input.addEventListener("input", function () {
+          if (input.value.trim()) group[input.dataset.number] = input.value.trim();
+          else delete group[input.dataset.number];
+          saveSoon();
+        });
+      });
+    });
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  }
+
+  // ---------- Main loop: runs every frame ----------
+
+  function update() {
+    const controllers = getControllers();
+
+    // Rebuild the cards only if a controller was plugged in/removed or a hat switch was found
+    const keys = controllers.map(controller => controller.key + ":" + controller.hatAxes.join(",")).join("|");
+    if (keys !== shownKeys) {
+      shownKeys = keys;
+      buildCards(controllers);
+    }
+
+    controllers.forEach(function ({ key, gamepad, hatAxes }, c) {
+      const card = document.querySelector(`[data-controller="${c}"]`);
+      const info = state[key];
+
+      // Hat switches: light up each direction while pressed, and announce each new press
+      hatAxes.forEach(function (axis) {
+        const directions = hatDirections(gamepad.axes[axis]);
+        HAT_DIRECTIONS.forEach(function (direction) {
+          const id = `${axis} ${direction}`;
+          const pressed = directions.includes(direction);
+          if (pressed && !info.hatPressed[id]) info.lastText = describe(key, "hat", axis, direction);
+          info.hatPressed[id] = pressed;
+          card.querySelector(`[data-hat="${id}"]`).classList.toggle("bg-sky-700", pressed);
+        });
+      });
+
+      // Buttons: light up while pressed, and announce each new press
+      gamepad.buttons.forEach(function (button, i) {
+        if (button.pressed && !info.pressed[i]) info.lastText = describe(key, "button", i);
+        info.pressed[i] = button.pressed;
+        card.querySelector(`[data-button="${i}"]`).classList.toggle("bg-sky-700", button.pressed);
+      });
+
+      // Axes: live bar, light up when moved away from where it started
+      gamepad.axes.forEach(function (value, i) {
+        const row = card.querySelector(`[data-axis="${i}"]`);
+
+        // A hat's raw axis: just show which way it's pushed (use the hat buttons above instead)
+        if (hatAxes.includes(i)) {
+          drawBar(row.querySelector("[data-bar]"), 0);
+          row.querySelector("[data-value]").textContent = hatDirections(value).join("+") || "centered";
+          return;
+        }
+
+        const moved = Math.abs(value - info.rest[i]) > 0.3;
+        if (moved && !row.classList.contains("bg-sky-700")) info.lastText = describe(key, "axis", i);
+        row.classList.toggle("bg-sky-700", moved);
+        drawBar(row.querySelector("[data-bar]"), value);
+        row.querySelector("[data-value]").textContent = value.toFixed(2);
+      });
+
+      card.querySelector("[data-last]").textContent = info.lastText;
+    });
+
+    requestAnimationFrame(update);
+  }
+
+  // ---------- Save / load ----------
+
+  // Save shortly after typing stops, so nicknames are kept even if the controller is unplugged right away
+  let saveTimer = null;
+  function saveSoon() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNames, 300);
+  }
+
+  async function saveNames() {
+    try {
+      await fetch("/api/controller-names", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(names),
+      });
+      document.getElementById("save-status").textContent = "Saved ✓ " + new Date().toLocaleTimeString();
+    } catch (error) {
+      document.getElementById("save-status").textContent = "Save failed: can't reach the server.";
+    }
+  }
+
+  async function start() {
+    try {
+      names = (await (await fetch("/api/controller-names")).json()) || {};
+    } catch (error) {}
+    update();
+  }
+
+  start();
+</script>
+{% endblock %}
