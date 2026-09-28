@@ -3,13 +3,11 @@
 # Standard imports
 import os
 import sys
-import json
-import logging
 import signal
 import threading
 
 # External imports
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for
 from flask_socketio import SocketIO
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -20,7 +18,7 @@ from dotenv import load_dotenv
 # from utils.heartbeat_helper import HeartbeatHelper
 # from frontend_utils.frontend_handler import handle_frontend_event
 # from frontend_utils.log_helper import LogHelper
-from frontend_utils.recording_api import RecordingRoutes
+# from frontend_utils.recording_api import RecordingRoutes  # Import the new module
 # from frontend_utils.controller_api import ControllerRoutes  # Import the new module
 # from frontend_utils.photo_api import PhotoButton
 
@@ -41,25 +39,17 @@ class Frontend:
             'camera1': os.getenv('CAMERA1_URL', 'http://localhost:1984/stream.html?src=camera1'),
             'camera2': os.getenv('CAMERA2_URL', 'http://localhost:1984/stream.html?src=camera2'),
             'camera3': os.getenv('CAMERA3_URL', 'http://localhost:1984/stream.html?src=camera3'),
-            'camera4': os.getenv('CAMERA4_URL', 'http://localhost:1984/stream.html?src=camera4'),
-            'camera5': os.getenv('CAMERA5_URL', 'http://localhost:1984/stream.html?src=camera5'),
-            'camera6': os.getenv('CAMERA6_URL', 'http://localhost:1984/stream.html?src=camera6')
+            'camera4': os.getenv('CAMERA4_URL', 'http://localhost:1984/stream.html?src=camera4')
         }
 
-        # RTSP streams from go2rtc (used by ffmpeg for recording / snapshots)
+        # For FFmpeg snapshot
         self.camera_rtsp_urls = {
             "cv_camera": "rtsp://127.0.0.1:8554/cv_camera",
-            "camera1": "rtsp://127.0.0.1:8554/camera1",
-            "camera2": "rtsp://127.0.0.1:8554/camera2",
-            "camera3": "rtsp://127.0.0.1:8554/camera3",
-            "camera4": "rtsp://127.0.0.1:8554/camera4",
-            "camera5": "rtsp://127.0.0.1:8554/camera5",
-            "camera6": "rtsp://127.0.0.1:8554/camera6"
-        }
-
-        # Where the controller pages save their settings
-        self.controller_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "controller_config.json")
-        self.controller_names_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "controller_names.json")
+            "camera1": "rtsp://127.0.0.1:8554/camera_1",
+            "camera2": "rtsp://127.0.0.1:8554/camera_2",
+            "camera3": "rtsp://127.0.0.1:8554/camera_3",
+            "camera4": "rtsp://127.0.0.1:8554/camera_4"
+        }        
 
 
         ### ----- ROUTE SETUP ----- ###
@@ -68,8 +58,7 @@ class Frontend:
         #     self.app,
         #     self.camera_rtsp_urls
         # )
-        logging.basicConfig(level=logging.INFO)
-        self.recording_routes = RecordingRoutes(self.app, logging.getLogger("recording"), self.camera_rtsp_urls)
+        # self.recording_routes = RecordingRoutes(self.app)
         # self.controller_routes = ControllerRoutes(self.app)
 
         ### ----- SOCKETIO SETUP ----- ###
@@ -143,42 +132,6 @@ class Frontend:
             return render_template(
                 "controller_mapping.html", active_page="controller-mapping"
             )
-
-        # Controller config (test) - choose which stick/button controls which part of the ROV
-        @self.app.route("/controller-config")
-        def controller_config():
-            return render_template("controller_config.html", active_page="controller-config")
-
-        @self.app.route("/api/controller-config", methods=["GET"])
-        def get_controller_config():
-            if not os.path.exists(self.controller_config_file):
-                return jsonify(None)  # nothing saved yet, the page uses its defaults
-            with open(self.controller_config_file) as f:
-                return jsonify(json.load(f))
-
-        @self.app.route("/api/controller-config", methods=["POST"])
-        def save_controller_config():
-            with open(self.controller_config_file, "w") as f:
-                json.dump(request.json, f, indent=2)
-            return jsonify({"success": True})
-
-        # Controller buttons - see every button/axis live and give them nicknames
-        @self.app.route("/controller-buttons")
-        def controller_buttons():
-            return render_template("controller_buttons.html", active_page="controller-buttons")
-
-        @self.app.route("/api/controller-names", methods=["GET"])
-        def get_controller_names():
-            if not os.path.exists(self.controller_names_file):
-                return jsonify(None)  # no nicknames saved yet
-            with open(self.controller_names_file) as f:
-                return jsonify(json.load(f))
-
-        @self.app.route("/api/controller-names", methods=["POST"])
-        def save_controller_names():
-            with open(self.controller_names_file, "w") as f:
-                json.dump(request.json, f, indent=2)
-            return jsonify({"success": True})
 
     # Function to setup the socketio events
     def setup_socketio_events(self):
