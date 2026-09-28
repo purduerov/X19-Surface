@@ -15,7 +15,7 @@
     {% block styles %}{% endblock %}
 </head>
 <body {% block body_attributes %}{% endblock %}>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav id="top-nav" class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="/">X17-Surface</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -54,7 +54,7 @@
                     
                     <!-- Controls Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if active_page in ['thruster-testing', 'controller-mapping'] %}active{% endif %}" 
+                        <a class="nav-link dropdown-toggle {% if active_page in ['thruster-testing', 'controller-mapping', 'controller-config', 'controller-buttons'] %}active{% endif %}" 
                            href="#" id="controlsDropdown" role="button" 
                            data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-joystick"></i> Controls
@@ -72,6 +72,18 @@
                                    <i class="bi bi-controller"></i> Controller Mapping
                                 </a>
                             </li>
+                            <li>
+                                <a class="dropdown-item {% if active_page == 'controller-config' %}active{% endif %}" 
+                                   href="/controller-config">
+                                   <i class="bi bi-sliders"></i> Controller Config (test)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if active_page == 'controller-buttons' %}active{% endif %}" 
+                                   href="/controller-buttons">
+                                   <i class="bi bi-dpad"></i> Controller Buttons
+                                </a>
+                            </li>
                         </ul>
                     </li>
                 </ul>
@@ -86,5 +98,16 @@
     <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <script src="/static/socketio_listener.js"></script>
     {% endblock %}
+
+    <script>
+        // Shift+H hides / shows the top nav bar (works on every page)
+        document.addEventListener("keydown", function (event) {
+            const typing = event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA";
+            if (event.shiftKey && event.key.toLowerCase() === "h" && !typing) {
+                const nav = document.getElementById("top-nav");
+                nav.hidden = !nav.hidden;
+            }
+        });
+    </script>
 </body>
 </html>
