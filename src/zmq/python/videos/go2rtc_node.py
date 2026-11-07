@@ -7,6 +7,7 @@ import socket
 import subprocess
 import threading
 import signal
+import re
 
 # Ensure project root is in sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
@@ -38,13 +39,17 @@ class Go2rtcNode:
         self.start_go2rtc_server()
 
     def get_local_ip(self) -> str:
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.connect(("8.8.8.8", 80))  # Google's public DNS server
-                local_ip = s.getsockname()[0]
-            return local_ip
-        except Exception as e:
-            return f"Error getting local IP: {e}"
+        output = subprocess.check_output(
+            ["ip", "-4", "addr", "show", "enx00e04c688f71"],
+            text=True
+        )
+
+        match = re.search(r"inet (\d+\.\d+\.\d+\.\d+)", output)
+
+        if match:
+            return match.group(1)
+
+        raise RuntimeError("IPv4 address not found on enx00e04c688f71")
 
     def publish_ip_address(self):
         ip = self.get_local_ip()
@@ -119,8 +124,8 @@ def main():
     print("🚀 [ZMQ Go2RTC Node] Node active. Publishing IP address periodically...", flush=True)
     try:
         while not node.shutting_down:
-            if node.ip_pub_count < node.ip_pub_count_max:
-                node.publish_ip_address()
+            # if node.ip_pub_count < node.ip_pub_count_max:
+            node.publish_ip_address()
             time.sleep(1.0)
     except KeyboardInterrupt:
         pass
