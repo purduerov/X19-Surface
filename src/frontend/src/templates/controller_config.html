@@ -17,8 +17,8 @@
   - Input names shown here come from the nicknames on the Controller Buttons page.
   - Shared helpers (getControllers, readInput, inputLabel) are in static/controllers.js.
 
-  The control names match JoystickCommand in proto/telemetry.proto.
-  Nothing reads the saved file yet: a joystick node still has to load it and send commands.
+  The control names match JoystickCommand in proto/telemetry.proto. The six live values are
+  sent to Python over the `joystick_command` Socket.IO event at 20 Hz.
   To add a control, add a line to CONTROLS and BUILT_IN_DEFAULTS below.
 #}
 
@@ -57,6 +57,9 @@
   <!-- Controllers + settings for this configuration -->
   <div class="mb-4 flex flex-wrap items-center gap-4 rounded-lg bg-slate-900 p-4 text-sm">
     <div id="gamepad-status" class="flex-1 text-slate-400">No controller found. Plug one in and press any button.</div>
+    <div id="socket-status" class="rounded bg-amber-500/20 px-2 py-1 text-xs font-bold text-amber-300">
+      Socket.IO connecting…
+    </div>
     <label class="flex items-center gap-2">
       Dead zone
       <input id="deadzone" type="number" step="0.05" min="0" max="0.9" class="w-20 rounded bg-slate-800 px-2 py-1">
@@ -115,6 +118,21 @@
   let lastSaved = structuredClone(data);  // what's in the file, used to undo edits on "Save as new"
   let names = {};        // nicknames from the Controller Buttons page
   let listening = null;  // while assigning: { key, field, rest: { controller key: [...axes] } }
+  let latestCommand = zeroCommand();
+  let controllerConnected = false;
+
+  function zeroCommand() {
+    return Object.fromEntries(CONTROLS.map(control => [control.key, 0]));
+  }
+
+  function setSocketStatus(message, connected) {
+    const status = document.getElementById("socket-status");
+    status.textContent = message;
+    status.classList.toggle("bg-emerald-500/20", connected);
+    status.classList.toggle("text-emerald-300", connected);
+    status.classList.toggle("bg-amber-500/20", !connected);
+    status.classList.toggle("text-amber-300", !connected);
+  }
 
   function config() {
     return data.configs[current];
@@ -243,6 +261,7 @@
 
   function update() {
     const controllers = getControllers();
+    controllerConnected = controllers.length > 0;
     document.getElementById("gamepad-status").textContent = controllers.length
       ? "🎮 " + controllers.map(({ key }) => (names[key] && names[key].name) || key).join("  +  ")
       : "No controller found. Plug one in and press any button.";
@@ -261,13 +280,39 @@
     }
 
     // Live output bars
+    const nextCommand = {};
     document.querySelectorAll("#rows tr").forEach(function (row) {
       const value = controlValue(controllers, config().controls[row.dataset.key]);
+      nextCommand[row.dataset.key] = value;
       drawBar(row.querySelector("[data-bar]"), value);
       row.querySelector("[data-value]").textContent = value.toFixed(2);
     });
+    latestCommand = controllerConnected ? nextCommand : zeroCommand();
 
     requestAnimationFrame(update);
+  }
+
+  // Send all six values together. Volatile commands may be dropped instead of queued if the
+  // network is busy; the next command follows 50 ms later. Zeroes use a normal emit for safety.
+  function sendCommand() {
+    if (!window.socket || !socket.connected) {
+      setSocketStatus("Socket.IO disconnected", false);
+      return;
+    }
+
+    const shouldStop = document.hidden || !controllerConnected;
+    const command = shouldStop ? zeroCommand() : latestCommand;
+    if (shouldStop) socket.emit("joystick_command", command);
+    else socket.volatile.emit("joystick_command", command);
+
+    setSocketStatus(
+      shouldStop ? "Socket.IO · sending zeroes" : "Socket.IO · sending 20 Hz",
+      true,
+    );
+  }
+
+  function stopController() {
+    if (window.socket && socket.connected) socket.emit("joystick_command", zeroCommand());
   }
 
   // ---------- Saving and the configuration buttons ----------
@@ -362,8 +407,22 @@
     buildRows();
     showConfig();
     update();
+    setInterval(sendCommand, 50);
+
+    if (window.socket) {
+      socket.on("connect", sendCommand);
+      socket.on("disconnect", () => setSocketStatus("Socket.IO disconnected", false));
+    } else {
+      setSocketStatus("Socket.IO unavailable", false);
+    }
   }
 
+  window.addEventListener("pagehide", stopController);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopController();
+    else sendCommand();
+  });
+  window.addEventListener("gamepaddisconnected", stopController);
   start();
 </script>
 {% endblock %}

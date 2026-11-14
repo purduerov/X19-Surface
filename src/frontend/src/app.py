@@ -5,8 +5,10 @@ import os
 import sys
 import json
 import logging
+import math
 import signal
 import threading
+import time
 
 # External imports
 from flask import Flask, render_template, request, redirect, url_for, jsonify
@@ -23,6 +25,37 @@ from dotenv import load_dotenv
 from frontend_utils.recording_api import RecordingRoutes
 # from frontend_utils.controller_api import ControllerRoutes  # Import the new module
 # from frontend_utils.photo_api import PhotoButton
+
+JOYSTICK_FIELDS = ("forward", "strafe", "vertical", "pitch", "roll", "yaw")
+
+
+def zero_joystick_command():
+    """Build a timestamped stop command for the ROV control pipeline."""
+    return {
+        **{field: 0.0 for field in JOYSTICK_FIELDS},
+        "timestamp_us": time.time_ns() // 1_000,
+    }
+
+
+def normalize_joystick_command(data):
+    """Validate a browser joystick payload and clamp every command to -1..1."""
+    if not isinstance(data, dict):
+        return None
+
+    command = {}
+    try:
+        for field in JOYSTICK_FIELDS:
+            value = float(data[field])
+            if not math.isfinite(value):
+                return None
+            command[field] = max(-1.0, min(1.0, value))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    # JoystickCommand in proto/telemetry.proto uses a microsecond timestamp.
+    command["timestamp_us"] = time.time_ns() // 1_000
+    return command
+
 
 class Frontend:
     def __init__(self):
@@ -73,6 +106,8 @@ class Frontend:
         # self.controller_routes = ControllerRoutes(self.app)
 
         ### ----- SOCKETIO SETUP ----- ###
+        self.latest_joystick_command = None
+        self.joystick_sender_sid = None
         self.setup_socketio_events()
 
         ### ----- START SERVICES ----- ###
@@ -190,8 +225,32 @@ class Frontend:
 
         @self.socketio.on("disconnect")
         def disconnect():
+            # If the active controller page disappears without delivering its browser-side
+            # stop event, make sure downstream control clients do not retain stale thrust.
+            if request.sid == getattr(self, "joystick_sender_sid", None):
+                command = zero_joystick_command()
+                self.latest_joystick_command = command
+                self.joystick_sender_sid = None
+                self.socketio.emit("joystick_command", command, include_self=False)
             print("disconnected")
             # Disconnects are expected during page navigation, so debug level is sufficient
+
+        @self.socketio.on("joystick_command")
+        def joystick_command(data):
+            """Relay the six normalized controls to Paige's Socket.IO client."""
+            command = normalize_joystick_command(data)
+            if command is None:
+                logging.getLogger("joystick").warning(
+                    "Rejected invalid joystick_command payload"
+                )
+                return {"success": False, "error": "invalid joystick command"}
+
+            self.latest_joystick_command = command
+            self.joystick_sender_sid = request.sid
+            # Python consumers connect to this Flask-SocketIO server and listen for
+            # `joystick_command`. Do not echo the high-rate event to its sender.
+            self.socketio.emit("joystick_command", command, include_self=False)
+            return {"success": True}
 
         # General-purpose event handler
         @self.socketio.on("*")  # Using '*' to catch all events
