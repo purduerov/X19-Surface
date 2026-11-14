@@ -27,6 +27,8 @@ message JoystickCommand {
   float pitch = 5;     // -1.0 to 1.0
   float roll = 6;      // -1.0 to 1.0
   float yaw = 7;       // -1.0 to 1.0 (heading)
+  uint32 is_fine = 8;        // power mode: FINE/STANDARD/YEET/MEGAYEET
+  bool is_pool_centric = 9;
 }
 
 // testing message
