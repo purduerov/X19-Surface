@@ -3,11 +3,15 @@
 # Standard imports
 import os
 import sys
+import json
+import logging
+import math
 import signal
 import threading
+import time
 
 # External imports
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_socketio import SocketIO
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -18,9 +22,40 @@ from dotenv import load_dotenv
 # from utils.heartbeat_helper import HeartbeatHelper
 # from frontend_utils.frontend_handler import handle_frontend_event
 # from frontend_utils.log_helper import LogHelper
-# from frontend_utils.recording_api import RecordingRoutes  # Import the new module
+from frontend_utils.recording_api import RecordingRoutes
 # from frontend_utils.controller_api import ControllerRoutes  # Import the new module
 # from frontend_utils.photo_api import PhotoButton
+
+JOYSTICK_FIELDS = ("forward", "strafe", "vertical", "pitch", "roll", "yaw")
+
+
+def zero_joystick_command():
+    """Build a timestamped stop command for the ROV control pipeline."""
+    return {
+        **{field: 0.0 for field in JOYSTICK_FIELDS},
+        "timestamp_us": time.time_ns() // 1_000,
+    }
+
+
+def normalize_joystick_command(data):
+    """Validate a browser joystick payload and clamp every command to -1..1."""
+    if not isinstance(data, dict):
+        return None
+
+    command = {}
+    try:
+        for field in JOYSTICK_FIELDS:
+            value = float(data[field])
+            if not math.isfinite(value):
+                return None
+            command[field] = max(-1.0, min(1.0, value))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    # JoystickCommand in proto/telemetry.proto uses a microsecond timestamp.
+    command["timestamp_us"] = time.time_ns() // 1_000
+    return command
+
 
 class Frontend:
     def __init__(self):
@@ -39,17 +74,25 @@ class Frontend:
             'camera1': os.getenv('CAMERA1_URL', 'http://localhost:1984/stream.html?src=camera1'),
             'camera2': os.getenv('CAMERA2_URL', 'http://localhost:1984/stream.html?src=camera2'),
             'camera3': os.getenv('CAMERA3_URL', 'http://localhost:1984/stream.html?src=camera3'),
-            'camera4': os.getenv('CAMERA4_URL', 'http://localhost:1984/stream.html?src=camera4')
+            'camera4': os.getenv('CAMERA4_URL', 'http://localhost:1984/stream.html?src=camera4'),
+            'camera5': os.getenv('CAMERA5_URL', 'http://localhost:1984/stream.html?src=camera5'),
+            'camera6': os.getenv('CAMERA6_URL', 'http://localhost:1984/stream.html?src=camera6')
         }
 
-        # For FFmpeg snapshot
+        # RTSP streams from go2rtc (used by ffmpeg for recording / snapshots)
         self.camera_rtsp_urls = {
             "cv_camera": "rtsp://127.0.0.1:8554/cv_camera",
-            "camera1": "rtsp://127.0.0.1:8554/camera_1",
-            "camera2": "rtsp://127.0.0.1:8554/camera_2",
-            "camera3": "rtsp://127.0.0.1:8554/camera_3",
-            "camera4": "rtsp://127.0.0.1:8554/camera_4"
-        }        
+            "camera1": "rtsp://127.0.0.1:8554/camera1",
+            "camera2": "rtsp://127.0.0.1:8554/camera2",
+            "camera3": "rtsp://127.0.0.1:8554/camera3",
+            "camera4": "rtsp://127.0.0.1:8554/camera4",
+            "camera5": "rtsp://127.0.0.1:8554/camera5",
+            "camera6": "rtsp://127.0.0.1:8554/camera6"
+        }
+
+        # Where the controller pages save their settings
+        self.controller_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "controller_config.json")
+        self.controller_names_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "controller_names.json")
 
 
         ### ----- ROUTE SETUP ----- ###
@@ -58,10 +101,13 @@ class Frontend:
         #     self.app,
         #     self.camera_rtsp_urls
         # )
-        # self.recording_routes = RecordingRoutes(self.app)
+        logging.basicConfig(level=logging.INFO)
+        self.recording_routes = RecordingRoutes(self.app, logging.getLogger("recording"), self.camera_rtsp_urls)
         # self.controller_routes = ControllerRoutes(self.app)
 
         ### ----- SOCKETIO SETUP ----- ###
+        self.latest_joystick_command = None
+        self.joystick_sender_sid = None
         self.setup_socketio_events()
 
         ### ----- START SERVICES ----- ###
@@ -133,6 +179,42 @@ class Frontend:
                 "controller_mapping.html", active_page="controller-mapping"
             )
 
+        # Controller config (test) - choose which stick/button controls which part of the ROV
+        @self.app.route("/controller-config")
+        def controller_config():
+            return render_template("controller_config.html", active_page="controller-config")
+
+        @self.app.route("/api/controller-config", methods=["GET"])
+        def get_controller_config():
+            if not os.path.exists(self.controller_config_file):
+                return jsonify(None)  # nothing saved yet, the page uses its defaults
+            with open(self.controller_config_file) as f:
+                return jsonify(json.load(f))
+
+        @self.app.route("/api/controller-config", methods=["POST"])
+        def save_controller_config():
+            with open(self.controller_config_file, "w") as f:
+                json.dump(request.json, f, indent=2)
+            return jsonify({"success": True})
+
+        # Controller buttons - see every button/axis live and give them nicknames
+        @self.app.route("/controller-buttons")
+        def controller_buttons():
+            return render_template("controller_buttons.html", active_page="controller-buttons")
+
+        @self.app.route("/api/controller-names", methods=["GET"])
+        def get_controller_names():
+            if not os.path.exists(self.controller_names_file):
+                return jsonify(None)  # no nicknames saved yet
+            with open(self.controller_names_file) as f:
+                return jsonify(json.load(f))
+
+        @self.app.route("/api/controller-names", methods=["POST"])
+        def save_controller_names():
+            with open(self.controller_names_file, "w") as f:
+                json.dump(request.json, f, indent=2)
+            return jsonify({"success": True})
+
     # Function to setup the socketio events
     def setup_socketio_events(self):
         @self.socketio.on("connect")
@@ -143,8 +225,32 @@ class Frontend:
 
         @self.socketio.on("disconnect")
         def disconnect():
+            # If the active controller page disappears without delivering its browser-side
+            # stop event, make sure downstream control clients do not retain stale thrust.
+            if request.sid == getattr(self, "joystick_sender_sid", None):
+                command = zero_joystick_command()
+                self.latest_joystick_command = command
+                self.joystick_sender_sid = None
+                self.socketio.emit("joystick_command", command, include_self=False)
             print("disconnected")
             # Disconnects are expected during page navigation, so debug level is sufficient
+
+        @self.socketio.on("joystick_command")
+        def joystick_command(data):
+            """Relay the six normalized controls to Paige's Socket.IO client."""
+            command = normalize_joystick_command(data)
+            if command is None:
+                logging.getLogger("joystick").warning(
+                    "Rejected invalid joystick_command payload"
+                )
+                return {"success": False, "error": "invalid joystick command"}
+
+            self.latest_joystick_command = command
+            self.joystick_sender_sid = request.sid
+            # Python consumers connect to this Flask-SocketIO server and listen for
+            # `joystick_command`. Do not echo the high-rate event to its sender.
+            self.socketio.emit("joystick_command", command, include_self=False)
+            return {"success": True}
 
         # General-purpose event handler
         @self.socketio.on("*")  # Using '*' to catch all events

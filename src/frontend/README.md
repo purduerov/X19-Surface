@@ -154,6 +154,48 @@ npm run build:css
 
 ---
 
+## 🎮 Joystick Socket.IO Contract
+
+The Controller Config page reads the browser Gamepad API, applies the active mapping,
+dead zone, inversion, and scaling, then emits `joystick_command` at 20 Hz. The Flask
+server validates and clamps all values, adds `timestamp_us`, and relays the event to
+the other Socket.IO clients.
+
+The payload contains the six fields from `JoystickCommand` in `proto/telemetry.proto`:
+
+```json
+{
+  "forward": 0.0,
+  "strafe": 0.0,
+  "vertical": 0.0,
+  "pitch": 0.0,
+  "roll": 0.0,
+  "yaw": 0.0,
+  "timestamp_us": 0
+}
+```
+
+A Python control node can receive the commands with:
+
+```python
+import socketio
+
+sio = socketio.Client()
+
+@sio.on("joystick_command")
+def on_joystick_command(command):
+    # Forward command to the ROV control pipeline.
+    print(command)
+
+sio.connect("http://127.0.0.1:5013")
+sio.wait()
+```
+
+For safety, the browser sends all zeroes when no controller is connected, the tab is
+hidden, or the Controller Config page is being closed.
+
+---
+
 ## ❓ FAQ
 
 ### Why use a local compiled `tailwind.css` file instead of a CDN?

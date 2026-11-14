@@ -2,3 +2,4 @@
 src/frontend/node_modules/*
 *.pyc
 /venv
+src/frontend/src/videos/

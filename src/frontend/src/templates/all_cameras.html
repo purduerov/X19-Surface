@@ -1,74 +1,277 @@
 {% extends "base.html" %}
 
+{#
+  All Cameras - "Google Meet" style view.
+  One big camera + a strip of small cameras that fill the rest of the screen.
+
+  - Click a small camera to swap it into the big spot.
+  - Use the dropdown on any camera to choose which feed it shows.
+  - Hotkeys: Shift+3/4/5/6 = number of cameras, Shift+L = strip on side/bottom,
+             Shift+R = start/stop recording every camera on screen (saved to videos/ by ffmpeg),
+             Shift+? = hide/show the control panel, Shift+H = hide/show top nav (see base.html).
+
+  Camera URLs come from app.py (camera_urls). Your choices are remembered in this browser.
+#}
+
 {% block title %}All Cameras{% endblock %}
 
-{% block body_attributes %}class="bg-rov-dark font-orbitron text-white min-h-screen"{% endblock %}
+{% block body_attributes %}class="h-screen flex flex-col overflow-hidden bg-black text-white"{% endblock %}
 
 {% block content %}
-<div class="camera-grid-container">
-  <div class="camera-grid">
-    
-    <!-- Camera 1 -->
-    <div class="camera-cell">
-      <div class="camera-label">Camera 1</div>
-      <iframe class="w-full h-full border-none" src="{{ camera_urls.camera1|safe }}" scrolling="no"></iframe>
-      
-      <button class="photo-button" data-camera="camera1">
-        📸
-      </button>
-
-      <button class="fullscreen-button" data-camera="1">
-        <i class="bi bi-fullscreen"></i>
-      </button>
-    </div>
-    
-    <!-- Camera 2 -->
-    <div class="camera-cell">
-      <div class="camera-label">Camera 2</div>
-      <iframe class="w-full h-full border-none" src="{{ camera_urls.camera2|safe }}" scrolling="no"></iframe>
-
-      <button class="photo-button" data-camera="camera2">
-        📸
-      </button>
-
-      <button class="fullscreen-button" data-camera="2">
-        <i class="bi bi-fullscreen"></i>
-      </button>
-    </div>
-    
-    <!-- Camera 3 -->
-    <div class="camera-cell">
-      <div class="camera-label">Camera 3</div>
-      <iframe class="w-full h-full border-none" src="{{ camera_urls.camera3|safe }}" scrolling="no"></iframe>
-
-      <button class="photo-button" data-camera="camera3">
-        📸
-      </button>
-
-      <button class="fullscreen-button" data-camera="3">
-        <i class="bi bi-fullscreen"></i>
-      </button>
-    </div>
-    
-    <!-- Camera 4 -->
-    <div class="camera-cell">
-      <div class="camera-label">Camera 4</div>
-      <iframe class="w-full h-full border-none" src="{{ camera_urls.camera4|safe }}" scrolling="no"></iframe>
-
-      <button class="photo-button" data-camera="camera4">
-        📸
-      </button>
-
-      <button class="fullscreen-button" data-camera="4">
-        <i class="bi bi-fullscreen"></i>
-      </button>
-    </div>
-
+<main id="camera-page" class="flex min-h-0 flex-1 flex-row gap-1 p-1">
+  <!-- Big camera (the depth reading sits on top of it) -->
+  <div id="big-slot" class="relative flex min-h-0 min-w-0 flex-[3]">
+    <div id="depth" class="absolute right-2 top-2 z-20 rounded bg-black/70 px-2 py-1 text-sm font-bold">Depth: -- m</div>
   </div>
+
+  <!-- Small cameras (they split this space evenly) -->
+  <div id="small-slots" class="flex min-h-0 min-w-0 flex-1 flex-col gap-1"></div>
+</main>
+
+<!-- Floating control panel (Shift+? hides it) -->
+<div id="controls" class="fixed bottom-3 right-3 z-50 rounded-lg bg-black/80 p-3 text-xs leading-relaxed">
+  <div class="mb-2 flex items-center gap-1">
+    <span class="mr-1 font-bold">Cameras:</span>
+    <button data-count="3" class="rounded bg-white/10 px-2 py-1 hover:bg-white/30">3</button>
+    <button data-count="4" class="rounded bg-white/10 px-2 py-1 hover:bg-white/30">4</button>
+    <button data-count="5" class="rounded bg-white/10 px-2 py-1 hover:bg-white/30">5</button>
+    <button data-count="6" class="rounded bg-white/10 px-2 py-1 hover:bg-white/30">6</button>
+  </div>
+  <div class="text-white/70">
+    Click a small camera to make it big<br>
+    Shift+3/4/5/6: number of cameras<br>
+    Shift+L: strip on side / bottom<br>
+    Shift+R: start/stop recording<br>
+    Shift+H: hide/show top bar<br>
+    Shift+?: hide/show this panel
+  </div>
+</div>
+
+<!-- Small recording indicator, bottom-left (only visible while recording or on an error) -->
+<div id="rec" hidden class="fixed bottom-3 left-3 z-50 flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-bold">
+  <span id="rec-dot" class="h-2.5 w-2.5 animate-pulse rounded-full bg-red-600"></span>
+  <span id="rec-text">REC</span>
 </div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
-<script src="/static/all_cameras.js"></script>
+<script>
+  // All cameras from app.py, e.g. { "camera1": "http://...", "cv_camera": "http://..." }
+  const CAMERAS = {{ camera_urls|tojson }};
+  const CAMERA_NAMES = Object.keys(CAMERAS).sort();  // camera1, camera2, ..., cv_camera
+
+  const page = document.getElementById("camera-page");
+  const bigSlot = document.getElementById("big-slot");
+  const smallSlots = document.getElementById("small-slots");
+
+  // shown[0] is the big camera, the rest are the small ones
+  let shown = ["camera1", "camera2", "camera3", "camera4"];
+  let bottomStrip = false;
+
+  function label(name) {
+    return name === "cv_camera" ? "CV Camera" : "Camera " + name.replace("camera", "");
+  }
+
+  // Build one camera tile: a feed picker + the video iframe
+  function makeTile() {
+    const tile = document.createElement("div");
+    tile.className = "relative min-h-0 min-w-0 flex-1 cursor-pointer overflow-hidden rounded bg-neutral-900";
+    tile.innerHTML = `
+      <select class="absolute left-2 top-2 z-10 rounded bg-black/70 px-2 py-1 text-sm font-bold text-white">
+        ${CAMERA_NAMES.map(name => `<option value="${name}">${label(name)}</option>`).join("")}
+      </select>
+      <iframe class="pointer-events-none h-full w-full border-0" scrolling="no"></iframe>`;
+
+    // Pick a different feed for this tile (if it's already shown elsewhere, the two swap)
+    const picker = tile.querySelector("select");
+    picker.addEventListener("click", event => event.stopPropagation());
+    picker.addEventListener("change", function () {
+      const i = allTiles().indexOf(tile);
+      const other = shown.indexOf(picker.value);
+      if (other !== -1) shown[other] = shown[i];
+      shown[i] = picker.value;
+      render();
+    });
+
+    // Click a small tile to swap it with the big one
+    tile.addEventListener("click", function () {
+      const i = allTiles().indexOf(tile);
+      if (i > 0) {
+        [shown[0], shown[i]] = [shown[i], shown[0]];
+        render();
+      }
+    });
+    return tile;
+  }
+
+  const bigTile = makeTile();
+  bigSlot.appendChild(bigTile);
+
+  function allTiles() {
+    return [bigTile, ...smallSlots.children];
+  }
+
+  // Draw the page from `shown` and `bottomStrip`
+  function render() {
+    // Add/remove small tiles until there is one per small camera
+    while (smallSlots.children.length < shown.length - 1) smallSlots.appendChild(makeTile());
+    while (smallSlots.children.length > shown.length - 1) smallSlots.lastChild.remove();
+
+    // Point each tile at its camera (only reload the iframe if the camera changed)
+    allTiles().forEach(function (tile, i) {
+      const iframe = tile.querySelector("iframe");
+      if (iframe.dataset.camera !== shown[i]) {
+        iframe.dataset.camera = shown[i];
+        iframe.src = CAMERAS[shown[i]];
+      }
+      tile.querySelector("select").value = shown[i];
+    });
+
+    // Strip on the right side (default) or along the bottom
+    page.classList.toggle("flex-row", !bottomStrip);
+    page.classList.toggle("flex-col", bottomStrip);
+    smallSlots.classList.toggle("flex-col", !bottomStrip);
+    smallSlots.classList.toggle("flex-row", bottomStrip);
+
+    // Highlight the active camera-count button
+    document.querySelectorAll("[data-count]").forEach(function (button) {
+      const active = Number(button.dataset.count) === shown.length;
+      button.classList.toggle("bg-sky-600", active);
+      button.classList.toggle("bg-white/10", !active);
+    });
+
+    save();
+  }
+
+  // Show `count` cameras: keep the current ones, add unused cameras or drop extras
+  function setCount(count) {
+    const unused = CAMERA_NAMES.filter(name => !shown.includes(name));
+    shown = shown.concat(unused).slice(0, count);
+    render();
+  }
+
+  // Remember the layout in this browser so it survives page reloads
+  function save() {
+    try {
+      localStorage.setItem("allCameras", JSON.stringify({ shown, bottomStrip }));
+    } catch (error) {}
+  }
+
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("allCameras"));
+      const valid = saved.shown.length >= 3 && saved.shown.length <= 6 && saved.shown.every(name => name in CAMERAS);
+      if (valid) {
+        shown = saved.shown;
+        bottomStrip = saved.bottomStrip;
+      }
+    } catch (error) {}
+  }
+
+  document.querySelectorAll("[data-count]").forEach(function (button) {
+    button.addEventListener("click", () => setCount(Number(button.dataset.count)));
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (!event.shiftKey || event.target.tagName === "INPUT") return;
+
+    if (["Digit3", "Digit4", "Digit5", "Digit6"].includes(event.code)) {
+      setCount(Number(event.code.replace("Digit", "")));
+    } else if (event.key.toLowerCase() === "l") {
+      bottomStrip = !bottomStrip;
+      render();
+    } else if (event.key.toLowerCase() === "r") {
+      toggleRecording();
+    } else if (event.key === "?") {
+      const controls = document.getElementById("controls");
+      controls.hidden = !controls.hidden;
+    }
+  });
+
+  // ---------- Recording (Shift+R) ----------
+  // The server runs the recordings; this page just asks it to start/stop and shows the status.
+  let recording = {};    // from the server: { "camera1": start time in seconds, ... }
+  let recordError = "";  // shown in the indicator for a few seconds when something goes wrong
+  let recordBusy = false;
+
+  async function refreshRecording() {
+    try {
+      recording = await (await fetch("/api/record/status")).json();
+    } catch (error) {}
+    drawRecordingIndicator();
+  }
+
+  function drawRecordingIndicator() {
+    const names = Object.keys(recording);
+    let text = recordError;
+    if (!recordError && names.length > 0) {
+      const seconds = Math.floor(Date.now() / 1000 - Math.min(...Object.values(recording)));
+      const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+      text = `REC ${time} · ${names.map(label).join(", ")}`;
+    }
+    document.getElementById("rec").hidden = !text;
+    document.getElementById("rec-dot").hidden = names.length === 0 || !!recordError;
+    document.getElementById("rec-text").textContent = text;
+  }
+
+  function showRecordError(message) {
+    recordError = "⚠ " + message;
+    drawRecordingIndicator();
+    setTimeout(function () {
+      recordError = "";
+      drawRecordingIndicator();
+    }, 5000);
+  }
+
+  // If anything is recording, stop it all. Otherwise record every camera on screen.
+  async function toggleRecording() {
+    if (recordBusy) return;
+    recordBusy = true;
+
+    const recordingNow = Object.keys(recording);
+    const action = recordingNow.length > 0 ? "stop" : "start";
+    const cameras = recordingNow.length > 0 ? recordingNow : shown.slice();
+    let allOk = true;
+
+    for (const name of cameras) {
+      try {
+        const result = await (await fetch(`/api/record/${action}/${name}`, { method: "POST" })).json();
+        if (!result.success) {
+          allOk = false;
+          showRecordError(result.message);
+        }
+      } catch (error) {
+        allOk = false;
+        showRecordError("Can't reach the server");
+      }
+    }
+    await refreshRecording();
+    recordBusy = false;
+
+    // ffmpeg quits after a moment if a camera stream isn't available - tell the user
+    if (action === "start" && allOk) {
+      setTimeout(async function () {
+        await refreshRecording();
+        const failed = cameras.filter(name => !(name in recording));
+        if (failed.length > 0) showRecordError(`Couldn't record ${failed.map(label).join(", ")} (no stream?)`);
+      }, 2500);
+    }
+  }
+
+  setInterval(refreshRecording, 3000);        // pick up changes from the server
+  setInterval(drawRecordingIndicator, 1000);  // tick the timer
+
+  load();
+  render();
+  refreshRecording();
+
+  // Live depth reading on the big camera (skipped if Socket.IO didn't load, e.g. offline)
+  if (window.socket) {
+    socket.on("depth", function (msg) {
+      msg = typeof msg === "string" ? JSON.parse(msg) : msg;
+      document.getElementById("depth").textContent = `Depth: ${msg.data.toFixed(2)} m`;
+    });
+  }
+</script>
 {% endblock %}
