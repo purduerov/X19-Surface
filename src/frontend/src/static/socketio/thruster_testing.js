@@ -96,7 +96,7 @@ function resetValues() {
         clearInterval(sendInterval);
         isSending = false;
         document.getElementById("toggle-send").textContent = "Send Values";
-        document.getElementById("toggle-send").className = "btn btn-primary";
+        document.getElementById("toggle-send").className = "rov-btn-primary";
         document.getElementById("send-once").style.display = "inline-block";
     }
     // Reset master slider and its display
@@ -123,14 +123,14 @@ function toggleSendValues() {
         // Start sending continuously
         isSending = true;
         toggleBtn.textContent = "Stop Sending Values";
-        toggleBtn.className = "btn btn-danger";
+        toggleBtn.className = "rov-btn-danger";
         sendOnceBtn.style.display = "none";
         sendInterval = setInterval(sendThrusterValues, 0); // Adjust interval as needed
     } else {
         // Stop continuous sending
         isSending = false;
         toggleBtn.textContent = "Send Values";
-        toggleBtn.className = "btn btn-primary";
+        toggleBtn.className = "rov-btn-primary";
         sendOnceBtn.style.display = "inline-block";
         clearInterval(sendInterval);
     }

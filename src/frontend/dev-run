@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+# ROV Frontend Development Launcher Script
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+echo "=================================================="
+echo "🚀 Starting ROV Frontend Development Environment"
+echo "=================================================="
+
+# Function to clean up background processes on exit (Ctrl+C)
+cleanup() {
+    echo ""
+    echo "🛑 Shutting down Tailwind CSS watcher and Flask app..."
+    if [ -n "$WATCHER_PID" ] && kill -0 "$WATCHER_PID" 2>/dev/null; then
+        kill "$WATCHER_PID" 2>/dev/null || true
+    fi
+    exit 0
+}
+
+# Trap Ctrl+C (SIGINT), SIGTERM, and EXIT
+trap cleanup SIGINT SIGTERM EXIT
+
+# 1. Start Tailwind CSS Watcher in background
+echo "🎨 Starting Tailwind CSS watcher..."
+npm run dev:css &
+WATCHER_PID=$!
+
+# Wait 1 second for initial build check
+sleep 1
+
+# 2. Start Flask App in foreground
+echo "🐍 Starting Flask Backend (app.py)..."
+echo "--------------------------------------------------"
+cd "$SCRIPT_DIR/src"
+python3 app.py

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# Stop all running ROV nodes and kill tmux session
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/launch" --stop

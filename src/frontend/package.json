@@ -1,0 +1,12 @@
+{
+  "name": "rov-x19-surface-frontend",
+  "version": "1.0.0",
+  "description": "ROV X19 Surface Control Interface Frontend",
+  "scripts": {
+    "build:css": "npx -y tailwindcss@3 -i src/static/components.css -o src/static/tailwind.css --config src/tailwind.config.js --minify",
+    "dev:css": "npx -y tailwindcss@3 -i src/static/components.css -o src/static/tailwind.css --config src/tailwind.config.js --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

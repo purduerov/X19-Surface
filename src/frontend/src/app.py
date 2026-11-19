@@ -26,6 +26,7 @@ class Frontend:
     def __init__(self):
         # Setup the flask app
         self.app = Flask(__name__)
+        self.app.config["TEMPLATES_AUTO_RELOAD"] = True
         CORS(self.app)
         # Add a secret key for the session
         self.app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(24).hex())
@@ -35,11 +36,10 @@ class Frontend:
         # Get camera URLs from environment variables or use defaults
         self.camera_urls = {
             'cv_camera': os.getenv('CV_CAMERA_URL', 'http://localhost:8889/cv_camera'),
-            'camera1': os.getenv('CAMERA1_URL', 'http://localhost:8889/camera_1'),
-            'camera2': os.getenv('CAMERA2_URL', 'http://localhost:8889/camera_2'),
-            'camera3': os.getenv('CAMERA3_URL', 'http://localhost:8889/camera_3'),
-            'camera4': os.getenv('CAMERA4_URL', 'http://localhost:8889/camera_4'),
-            'camera5': os.getenv('CAMERA5_URL', 'http://localhost:8889/camera_5')
+            'camera1': os.getenv('CAMERA1_URL', 'http://localhost:1984/stream.html?src=camera1'),
+            'camera2': os.getenv('CAMERA2_URL', 'http://localhost:1984/stream.html?src=camera2'),
+            'camera3': os.getenv('CAMERA3_URL', 'http://localhost:1984/stream.html?src=camera3'),
+            'camera4': os.getenv('CAMERA4_URL', 'http://localhost:1984/stream.html?src=camera4')
         }
 
         # For FFmpeg snapshot
@@ -93,6 +93,10 @@ class Frontend:
                 "innovative_ui.html", active_page="home", camera_urls=self.camera_urls
             )
 
+        @self.app.route("/demo")
+        def demo():
+            return render_template("demo_zmq_subscriber.html", active_page="demo")
+
         ### -------- CAMERA PAGES -------- ###
 
         @self.app.route("/all-cameras")
@@ -131,21 +135,6 @@ class Frontend:
             return render_template(
                 "thruster_testing.html", active_page="thruster-testing"
             )
-
-        # Node status page
-        @self.app.route("/node-status")
-        def node_status():
-            return render_template("node_status.html", active_page="node-status")
-
-        # Logs page
-        @self.app.route("/logs")
-        def logs():
-            return render_template("logs.html", active_page="logs")
-
-        # Recordings page
-        @self.app.route("/recordings")
-        def recordings_page():
-            return render_template("recordings.html", active_page="recordings")
 
         @self.app.route("/controller-mapping")
         def controller_mapping():

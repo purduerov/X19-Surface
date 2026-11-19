@@ -1,1 +1,4 @@
 .venv
+src/frontend/node_modules/*
+*.pyc
+/venv
