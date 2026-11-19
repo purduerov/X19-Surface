@@ -1,0 +1,28 @@
+{
+  "T.16000M (Vendor: 044f Product: b10a)": {
+    "axes": {},
+    "buttons": {
+      "0": "Trigger",
+      "2": "top face left"
+    },
+    "hats": {
+      "9 down": "down",
+      "9 left": "left",
+      "9 right": "right",
+      "9 up": "up"
+    },
+    "name": "Right Stick"
+  },
+  "TWCS Throttle (Vendor: 044f Product: b687)": {
+    "axes": {},
+    "buttons": {},
+    "hats": {},
+    "name": ""
+  },
+  "T.16000M (Vendor: 044f Product: b10a) #2": {
+    "name": "",
+    "buttons": {},
+    "axes": {},
+    "hats": {}
+  }
+}

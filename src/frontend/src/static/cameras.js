@@ -66,9 +66,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Keyboard shortcuts for switching cameras (1-4 keys)
+    // Keyboard shortcuts for switching cameras (1-6 keys)
     document.addEventListener('keydown', function (event) {
-        if (event.key >= '1' && event.key <= '4') {
+        if (event.key >= '1' && event.key <= '6') {
             switchCamera(event.key);
         }
     });

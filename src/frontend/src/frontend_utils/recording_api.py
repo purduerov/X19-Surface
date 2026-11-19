@@ -1,66 +1,80 @@
 import os
 import glob
 import re
+import signal
 import subprocess
+import time
 from datetime import datetime
 from flask import jsonify, request, send_file, abort, render_template
 
 
 class RecordingRoutes:
-    def __init__(self, app, logger):
+    def __init__(self, app, logger, rtsp_urls):
         self.app = app
         self.logger = logger
+        self.rtsp_urls = rtsp_urls  # camera name -> RTSP URL, e.g. "camera1" -> "rtsp://127.0.0.1:8554/camera1"
+        self.recording = {}  # camera name -> {"process": ffmpeg process, "started": start time}
         self.register_routes()
+
+    @staticmethod
+    def camera_name(camera):
+        """Accept "1" or "camera1" (or "cv_camera") and return the camera name"""
+        return f"camera{camera}" if camera.isdigit() else camera
 
     def register_routes(self):
         """Register all recording-related routes with the Flask app"""
 
-        @self.app.route("/api/record/start/<camera_number>", methods=["POST"])
-        def start_recording(camera_number):
-            try:
-                # Validate camera number
-                if camera_number not in ["1", "2", "3", "4"]:
-                    return jsonify(
-                        {"success": False, "message": "Invalid camera number"}
-                    )
+        # Recording works by running one ffmpeg process per camera that copies the
+        # camera's RTSP stream (from go2rtc) into videos/<camera>_<time>.mp4
 
-                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                videos_dir = os.path.join(os.getcwd(), "videos")
-                output_path = os.path.join(
-                    videos_dir, f"camera_{camera_number}_{timestamp}.mp4"
+        @self.app.route("/api/record/start/<camera>", methods=["POST"])
+        def start_recording(camera):
+            name = self.camera_name(camera)
+            if name not in self.rtsp_urls:
+                return jsonify({"success": False, "message": f"Unknown camera: {camera}"})
+            if name in self.recording:
+                return jsonify({"success": True})  # already recording
+
+            videos_dir = os.path.join(os.getcwd(), "videos")
+            os.makedirs(videos_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            output_path = os.path.join(videos_dir, f"{name}_{timestamp}.mp4")
+
+            command = ["ffmpeg", "-rtsp_transport", "tcp", "-i", self.rtsp_urls[name], "-c", "copy", output_path]
+            try:
+                process = subprocess.Popen(
+                    command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
-                stream_url = f"rtsp://localhost:8554/camera_{camera_number}"
+            except FileNotFoundError:
+                return jsonify({"success": False, "message": "ffmpeg is not installed"})
 
-                # Ensure the videos directory exists
-                os.makedirs(videos_dir, exist_ok=True)
+            self.recording[name] = {"process": process, "started": time.time()}
+            self.logger.info(f"Started recording {name} -> {output_path}")
+            return jsonify({"success": True})
 
-                # Use ffmpeg to start recording the stream
-                command = f"ffmpeg -i {stream_url} -c copy {output_path}"
-                os.system(f"nohup {command} &")
+        @self.app.route("/api/record/stop/<camera>", methods=["POST"])
+        def stop_recording(camera):
+            name = self.camera_name(camera)
+            entry = self.recording.pop(name, None)
+            if entry:
+                # SIGINT lets ffmpeg finish writing the file so the .mp4 is playable
+                entry["process"].send_signal(signal.SIGINT)
+                try:
+                    entry["process"].wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    entry["process"].kill()
+                self.logger.info(f"Stopped recording {name}")
+            return jsonify({"success": True})
 
-                return jsonify({"success": True})
-
-            except Exception as e:
-                return jsonify({"success": False, "message": str(e)})
-
-        @self.app.route("/api/record/stop/<camera_number>", methods=["POST"])
-        def stop_recording(camera_number):
-            try:
-                # Validate camera number
-                if camera_number not in ["1", "2", "3", "4"]:
-                    return jsonify(
-                        {"success": False, "message": "Invalid camera number"}
-                    )
-
-                # Find the ffmpeg process and kill it
-                stream_url = f"rtsp://localhost:8554/camera_{camera_number}"
-                command = f"pkill -f 'ffmpeg -i {stream_url}'"
-                os.system(command)
-
-                return jsonify({"success": True})
-
-            except Exception as e:
-                return jsonify({"success": False, "message": str(e)})
+        @self.app.route("/api/record/status")
+        def recording_status():
+            # Forget any ffmpeg that already exited (e.g. the camera stream wasn't available)
+            for name in list(self.recording):
+                if self.recording[name]["process"].poll() is not None:
+                    self.logger.warning(f"Recording of {name} stopped unexpectedly")
+                    del self.recording[name]
+            # { "camera1": <start time in seconds>, ... }
+            return jsonify({name: entry["started"] for name, entry in self.recording.items()})
 
         @self.app.route("/api/recordings")
         def get_recordings():
