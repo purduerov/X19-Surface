@@ -2,7 +2,7 @@
 
 {% block title %}Camera View{% endblock %}
 
-{% block body_attributes %}class="bg-rov-dark font-orbitron overflow-hidden h-screen"{% endblock %}
+{% block body_attributes %}class="h-screen overflow-hidden bg-rov-dark font-orbitron"{% endblock %}
 
 {% block content %}
 <div class="camera-container" data-camera-urls='{{ camera_urls|tojson }}'>
@@ -14,6 +14,8 @@
       <button class="btn-camera" data-camera="2">2</button>
       <button class="btn-camera" data-camera="3">3</button>
       <button class="btn-camera" data-camera="4">4</button>
+      <button class="btn-camera" data-camera="5">5</button>
+      <button class="btn-camera" data-camera="6">6</button>
     </div>
     <button id="record-button" class="btn-record">
       <span class="record-icon"></span> Record
@@ -24,6 +26,7 @@
 
 {% block scripts %}
 {{ super() }}
+
 <script src="/static/cameras.js"></script>
 <script src="/static/recording.js"></script>
 {% endblock %}

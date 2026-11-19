@@ -2,7 +2,7 @@
 
 This directory contains the frontend web interface for our ROV. It displays real-time telemetry data (depth, internal pressure, temperature, orientation, electrical load), video stream feeds from the ROV cameras, control mapping displays, and log viewers.
 
-It is built using **HTML5**, **Tailwind CSS**, **JavaScript (ES6+)**, and **Bootstrap Icons**, served via a **Python Flask** backend.
+It is built using **HTML5**, **Tailwind CSS**, and **JavaScript (ES6+)**, served via a **Python Flask** backend.
 
 ---
 

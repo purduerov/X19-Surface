@@ -152,6 +152,11 @@ class Frontend:
                 camera_urls=self.camera_urls,
             )
 
+        @self.app.route("/improved-all-cameras")
+        def improved_all_cameras():
+            """Keep the legacy URL while using the consolidated Tailwind camera view."""
+            return redirect(url_for("all_cameras"), code=302)
+
         @self.app.route("/fullscreen-camera")
         def fullscreen_camera():
             camera = request.args.get(
