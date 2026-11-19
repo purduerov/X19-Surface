@@ -48,7 +48,8 @@ class Frontend:
             "camera1": "rtsp://127.0.0.1:8554/camera_1",
             "camera2": "rtsp://127.0.0.1:8554/camera_2",
             "camera3": "rtsp://127.0.0.1:8554/camera_3",
-            "camera4": "rtsp://127.0.0.1:8554/camera_4"
+            "camera4": "rtsp://127.0.0.1:8554/camera_4",
+            "camera5": "rtsp://127.0.0.1:8554/camera_5"
         }        
 
 
@@ -103,6 +104,14 @@ class Frontend:
             return render_template(
                 "all_cameras.html",
                 active_page="all-cameras",
+                camera_urls=self.camera_urls,
+            )
+
+        @self.app.route("/improved-all-cameras")
+        def improved_all_cameras():
+            return render_template(
+                "improved_all_cameras.html",
+                active_page="improved-all-cameras",
                 camera_urls=self.camera_urls,
             )
 
